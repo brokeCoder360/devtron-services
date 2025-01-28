@@ -310,6 +310,14 @@
                 "EnvDescription": "",
                 "Example": "",
                 "Deprecated": "false"
+            },
+            {
+                "Env": "demo2",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
             }
         ]        
     }

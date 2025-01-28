@@ -299,5 +299,18 @@
                 "Deprecated": "false"
             }
         ]
+    },
+    {
+        "Category": "DEVTRON2",
+        "Fields": [
+            {
+                "Env": "ANALYTICS_DEBUG",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            }
+        ]        
     }
 ]

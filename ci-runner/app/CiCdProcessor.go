@@ -157,7 +157,7 @@ func (impl *CiCdProcessor) UploadLogs(event helper.CiCdTriggerEvent, exitCode *i
 	log.Println(util.DEVTRON, " blob storage configured ", storageModuleConfigured)
 	log.Println(util.DEVTRON, " in app logging enabled ", inAppLoggingEnabled)
 	if inAppLoggingEnabled {
-		helper.UploadLogs(cloudHelperConfig)
+		helper.UploadLogs(cloudHelperConfig, event.CommonWorkflowRequest.PartSize, event.CommonWorkflowRequest.ConcurrencyMultiplier)
 	} else {
 		log.Println(util.DEVTRON, "not uploading logs from app")
 	}

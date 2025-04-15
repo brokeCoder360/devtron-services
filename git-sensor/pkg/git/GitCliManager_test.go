@@ -30,7 +30,7 @@ func TestGitCliManagerImpl_processGitLogOutput(t *testing.T) {
 		impl := &GitCliManagerImpl{
 			GitManagerBase: NewGitManagerBaseImpl(logger, &internals.Configuration{}),
 		}
-		got, err := impl.GetCommits(BuildGitContext(context.Background()), "main", "", "/Users/subhashish/workspace/lens", 15, "", "")
+		got, _, _, err := impl.GetCommits(BuildGitContext(context.Background()), "main", "", "/Users/subhashish/workspace/lens", 15, "", "")
 		print("err", got, err)
 	})
 

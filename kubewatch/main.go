@@ -17,8 +17,6 @@
 package main
 
 import (
-	k8s1 "github.com/devtron-labs/common-lib/utils/k8s"
-	"github.com/devtron-labs/kubewatch/pkg/controller"
 	"log"
 	"os"
 	"os/signal"
@@ -31,22 +29,18 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	go app.Start()
-	client := app.getPubSubClientForInternalConfig()
-
-	httpTransportConfig := k8s1.NewCustomK8sHttpTransportConfig()
-	if app.isClusterTypeAllAndIsInternalConfig() {
-		app.buildInformerForAllClusters(client, httpTransportConfig)
+	startServer := func() {
+		app.Start()
 	}
-
-	startInformer := controller.NewStartController(app.Logger, client, app.externalConfig, httpTransportConfig)
-	stopChan := make(chan int)
-	go startInformer.Start(stopChan)
+	app.asyncRunnable.Execute(startServer)
+	err = app.informer.Start()
+	if err != nil {
+		log.Panic(err)
+	}
 	var gracefulStop = make(chan os.Signal)
 	signal.Notify(gracefulStop, syscall.SIGTERM, syscall.SIGINT)
 	sig := <-gracefulStop
-	stopChan <- 0
-	app.Logger.Infow("caught sig: %+v", sig)
+	app.logger.Infow("caught sig", "sig", sig.String())
 	app.Stop()
 	time.Sleep(app.defaultTimeout)
 }

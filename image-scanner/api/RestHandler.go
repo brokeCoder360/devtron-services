@@ -18,12 +18,14 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	bean2 "github.com/devtron-labs/common-lib/imageScan/bean"
 	"github.com/devtron-labs/image-scanner/common"
 	"github.com/devtron-labs/image-scanner/pkg/clairService"
 	"github.com/devtron-labs/image-scanner/pkg/grafeasService"
 	"github.com/devtron-labs/image-scanner/pkg/klarService"
 	"github.com/devtron-labs/image-scanner/pkg/security"
+	"github.com/devtron-labs/image-scanner/pkg/sql/adaptor"
 	"github.com/devtron-labs/image-scanner/pkg/sql/bean"
 	"github.com/devtron-labs/image-scanner/pkg/sql/repository"
 	"github.com/devtron-labs/image-scanner/pkg/user"
@@ -36,6 +38,7 @@ import (
 type RestHandler interface {
 	ScanForVulnerability(w http.ResponseWriter, r *http.Request)
 	ScanForVulnerabilityEvent(scanConfig *bean2.ImageScanEvent) (*common.ScanEventResponse, error)
+	RegisterAndSaveScannedResult(w http.ResponseWriter, r *http.Request)
 }
 
 func NewRestHandlerImpl(logger *zap.SugaredLogger,
@@ -119,14 +122,9 @@ func (impl *RestHandlerImpl) ScanForVulnerabilityEvent(scanConfig *bean2.ImageSc
 		impl.Logger.Errorw("error in marshalling scanEvent", "event", scanConfig, "err", err)
 		return nil, err
 	}
-	executionHistoryModel := &repository.ImageScanExecutionHistory{
-		Image:              scanConfig.Image,
-		ImageHash:          scanConfig.ImageDigest,
-		ExecutionTime:      time.Now(),
-		ExecutedBy:         scanConfig.UserId,
-		SourceMetadataJson: string(scanEventJson),
-	}
-	executionHistory, executionHistoryDirPath, err := impl.ImageScanService.RegisterScanExecutionHistoryAndState(executionHistoryModel, tool)
+	executionHistoryModel := adaptor.GetImageScanExecutionHistory(scanConfig, scanEventJson, time.Now())
+
+	executionHistory, executionHistoryDirPath, err := impl.ImageScanService.RegisterScanExecutionHistoryAndState(executionHistoryModel, tool.Id)
 	if err != nil {
 		impl.Logger.Errorw("service err, RegisterScanExecutionHistoryAndState", "err", err)
 		return nil, err
@@ -166,12 +164,65 @@ func (impl *RestHandlerImpl) ScanImageAsPerTool(scanConfig *bean2.ImageScanEvent
 			impl.Logger.Errorw("err in process msg", "err", err)
 			return nil, err
 		}
-	} else {
+	} else if tool.Name == bean.ScannerTypeTrivy && tool.Version == bean.ScanToolVersion1 {
 		err = impl.ImageScanService.ScanImage(scanConfig, tool, executionHistory, executionHistoryDirPath)
 		if err != nil {
 			impl.Logger.Errorw("err in process msg", "err", err)
 			return nil, err
 		}
+	} else {
+		err = fmt.Errorf("no tool found for scanning")
+		impl.Logger.Errorw("err in process msg", "err", err)
+		return nil, err
 	}
 	return result, nil
+}
+
+func (impl *RestHandlerImpl) RegisterAndSaveScannedResult(w http.ResponseWriter, r *http.Request) {
+	decoder := json.NewDecoder(r.Body)
+	var scanResultPayload bean2.ScanResultPayload
+	err := decoder.Decode(&scanResultPayload)
+	if err != nil {
+		impl.Logger.Errorw("error in decoding scanResultPayload", "error", err)
+		WriteJsonResp(w, err, nil, http.StatusBadRequest)
+		return
+	}
+
+	err = ValidateScanResultPayload(&scanResultPayload)
+	if err != nil {
+		impl.Logger.Errorw("validation failed", "error", err)
+		WriteJsonResp(w, err, nil, http.StatusBadRequest)
+		return
+	}
+
+	impl.Logger.Debugw("register and save scan result payload", "saveScanResultPayload", scanResultPayload)
+	_, err = impl.ImageScanService.RegisterAndSaveScannedResult(&scanResultPayload)
+	if err != nil {
+		impl.Logger.Errorw("service err, RegisterAndSaveScannedResult", "err", err)
+		WriteJsonResp(w, err, nil, http.StatusInternalServerError)
+		return
+	}
+	WriteJsonResp(w, nil, nil, http.StatusOK)
+}
+
+func ValidateScanResultPayload(scanResultPayload *bean2.ScanResultPayload) error {
+	if scanResultPayload.ScanToolId == 0 {
+		return fmt.Errorf("scan tool id not found: required")
+	}
+	if scanResultPayload.ImageScanEvent == nil {
+		return fmt.Errorf("image and digest not found: required")
+	}
+	if scanResultPayload.ImageScanEvent != nil && len(scanResultPayload.ImageScanEvent.Image) == 0 {
+		return fmt.Errorf("image not found: required")
+	}
+	if scanResultPayload.ImageScanEvent != nil && len(scanResultPayload.ImageScanEvent.ImageDigest) == 0 {
+		return fmt.Errorf("image digest not found: required")
+	}
+	if len(scanResultPayload.Sbom) == 0 {
+		return fmt.Errorf("sbom not found: required")
+	}
+	if len(scanResultPayload.SourceScanningResult) == 0 {
+		return fmt.Errorf("source Scanning result not found: required")
+	}
+	return nil
 }

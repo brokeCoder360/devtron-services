@@ -25,14 +25,14 @@ import (
 
 // UploadLogs
 // Checks of blob storage is configured, if yes, uploads the locally created log file to configured storage
-func UploadLogs(cloudHelperBaseConfig *util.CloudHelperBaseConfig) {
+func UploadLogs(cloudHelperBaseConfig *util.CloudHelperBaseConfig, partSize int64, concurrencyMultiplier int) {
 
 	if !cloudHelperBaseConfig.StorageModuleConfigured {
 		log.Println(util.DEVTRON, "not going to upload logs as storage module not configured...")
 		return
 	}
 
-	err := UploadFileToCloud(cloudHelperBaseConfig, util.TmpLogLocation, path.Join(cloudHelperBaseConfig.BlobStorageLogKey, util.TmpLogLocation))
+	err := UploadFileToCloud(cloudHelperBaseConfig, util.TmpLogLocation, path.Join(cloudHelperBaseConfig.BlobStorageLogKey, util.TmpLogLocation), partSize, concurrencyMultiplier)
 	if err != nil {
 		fmt.Println("Failed to upload to blob storage with error", err)
 		return

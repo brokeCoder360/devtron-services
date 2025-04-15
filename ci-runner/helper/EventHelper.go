@@ -49,6 +49,11 @@ const (
 	BUILDPACK_BUILD_TYPE          CiBuildType = "buildpack-build"
 )
 
+// IsSkipBuildType checks if the CiBuildType is of skip build type
+func (c CiBuildType) IsSkipBuildType() bool {
+	return c == BUILD_SKIP_BUILD_TYPE
+}
+
 const CI_JOB string = "CI_JOB"
 
 type CiBuildConfigBean struct {
@@ -162,6 +167,7 @@ type CommonWorkflowRequest struct {
 	ImageScanRetryDelay            int                              `json:"imageScanRetryDelay,omitempty"`
 	ShouldPullDigest               bool                             `json:"shouldPullDigest,omitempty"`
 	EnableSecretMasking            bool                             `json:"enableSecretMasking"`
+	PropagateLabelsInBuildxPod     bool                             `json:"propagateLabelsInBuildxPod"`
 	// Data from CD Workflow service
 	WorkflowRunnerId              int                            `json:"workflowRunnerId"`
 	CdPipelineId                  int                            `json:"cdPipelineId"`
@@ -190,6 +196,11 @@ type CommonWorkflowRequest struct {
 	AsyncBuildxCacheExport        bool                           `json:"asyncBuildxCacheExport"`
 	UseDockerApiToGetDigest       bool                           `json:"useDockerApiToGetDigest"`
 	HostUrl                       string                         `json:"hostUrl"`
+	ImageScanningSteps            []*ImageScanningSteps          `json:"imageScanningSteps,omitempty"`
+	ExecuteImageScanningVia       bean2.ScanExecutionMedium      `json:"executeImageScanningVia,omitempty"`
+	AwsInspectorConfig            string                         `json:"awsInspectorConfig,omitempty"`
+	PartSize                      int64                          `json:"partSize,omitempty"`
+	ConcurrencyMultiplier         int                            `json:"concurrencyMultiplier,omitempty"`
 }
 
 func (c *CommonWorkflowRequest) IsPreCdStage() bool {
@@ -208,7 +219,6 @@ func (c *CommonWorkflowRequest) GetCdStageType() PipelineType {
 	}
 	return ""
 }
-
 func (c *CommonWorkflowRequest) GetCloudHelperBaseConfig(blobStorageObjectType string) *util.CloudHelperBaseConfig {
 	return &util.CloudHelperBaseConfig{
 		StorageModuleConfigured: c.BlobStorageConfigured,
@@ -337,6 +347,11 @@ type CiCdTriggerEvent struct {
 	CommonWorkflowRequest *CommonWorkflowRequest `json:"commonWorkflowRequest"`
 }
 
+type HandleCdEventResponse struct {
+	PluginArtifacts    *PluginArtifacts
+	IsArtifactUploaded bool
+}
+
 type ExtEnvRequest struct {
 	OrchestratorHost  string `json:"orchestratorHost"`
 	OrchestratorToken string `json:"orchestratorToken"`
@@ -373,6 +388,12 @@ type CiCompleteEvent struct {
 	IsScanEnabled                 bool                `json:"isScanEnabled"`
 	PluginArtifacts               *PluginArtifacts    `json:"pluginArtifacts"`
 	DockerRegistryId              string              `json:"dockerRegistryId"`
+	TargetPlatforms               []string            `json:"targetPlatforms"`
+}
+
+func (event *CiCompleteEvent) WithTargetPlatforms(targetPlatforms []string) *CiCompleteEvent {
+	event.TargetPlatforms = targetPlatforms
+	return event
 }
 
 func (event *CiCompleteEvent) WithMetrics(metrics CIMetrics) *CiCompleteEvent {
@@ -449,6 +470,7 @@ type CdStageCompleteEvent struct {
 	PluginArtifactStage           string              `json:"pluginArtifactStage"`
 	PluginArtifacts               *PluginArtifacts    `json:"pluginArtifacts"`
 	IsArtifactUploaded            bool                `json:"isArtifactUploaded"`
+	IsFailed                      bool                `json:"isFailed"` //new flag as isFailed for backward compatibility
 }
 
 func (event *CdStageCompleteEvent) WithPluginArtifacts(pluginArtifacts *PluginArtifacts) *CdStageCompleteEvent {
@@ -763,4 +785,20 @@ func GetImageScanningEvent(ciCdRequest CommonWorkflowRequest) ImageScanningEvent
 	}
 	event.PipelineType = stage
 	return event
+}
+
+type ImageScanningSteps struct {
+	Steps      []*StepObject `json:"steps"`
+	ScanToolId int           `json:"scanToolId"`
+}
+
+func GetPrePostStageDisplayName(stageName string, stepType StepType) string {
+	if stepType == STEP_TYPE_PRE {
+		return fmt.Sprintf("%s (Pre-Build Task)", stageName)
+	} else if stepType == STEP_TYPE_POST {
+		return fmt.Sprintf("%s (Post-Build Task)", stageName)
+	} else {
+
+		return fmt.Sprintf("%s", stageName)
+	}
 }

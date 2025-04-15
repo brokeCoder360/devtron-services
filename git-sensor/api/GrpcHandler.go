@@ -156,6 +156,7 @@ func (impl *GrpcHandlerImpl) UpdateRepo(ctx context.Context, req *pb.GitMaterial
 		CheckoutMsgAny:   req.CheckoutMsgAny,
 		Deleted:          req.Deleted,
 		FilterPattern:    req.FilterPattern,
+		CreateBackup:     req.CreateBackup,
 	}
 
 	// Update repo
@@ -207,7 +208,7 @@ func (impl *GrpcHandlerImpl) SavePipelineMaterial(ctx context.Context, req *pb.S
 	return &pb.Empty{}, nil
 }
 
-// FetchChanges
+// FetchChanges fetches scm changes
 func (impl *GrpcHandlerImpl) FetchChanges(ctx context.Context, req *pb.FetchScmChangesRequest) (
 	*pb.MaterialChangeResponse, error) {
 
@@ -231,12 +232,7 @@ func (impl *GrpcHandlerImpl) FetchChanges(ctx context.Context, req *pb.FetchScmC
 			if !item.IsMessageValidUTF8() {
 				item.FixInvalidUTF8Message()
 			}
-			mappedCommit, err := impl.mapGitCommit(item)
-			if err != nil {
-				impl.logger.Debugw("failed to map git commit from bean to proto specified type",
-					"err", err)
-				continue
-			}
+			mappedCommit := impl.mapGitCommit(item)
 			pbGitCommits = append(pbGitCommits, mappedCommit)
 		}
 	}
@@ -286,10 +282,7 @@ func (impl *GrpcHandlerImpl) GetHeadForPipelineMaterials(ctx context.Context, re
 
 		var mappedGitCommit *pb.GitCommit
 		if item.GitCommit != nil {
-			mappedGitCommit, _ = impl.mapGitCommit(item.GitCommit)
-			if err != nil {
-				continue
-			}
+			mappedGitCommit = impl.mapGitCommit(item.GitCommit)
 		}
 
 		ciPipelineMaterialBeans = append(ciPipelineMaterialBeans, &pb.CiPipelineMaterialBean{
@@ -346,14 +339,7 @@ func (impl *GrpcHandlerImpl) GetCommitMetadata(ctx context.Context, req *pb.Comm
 	}
 
 	// Mapping GitCommit
-	mappedGitCommit, err := impl.mapGitCommit(gitCommit)
-	if err != nil {
-		impl.logger.Errorw("error mapping git commit",
-			"pipelineMaterialId", req.PipelineMaterialId,
-			"err", err)
-
-		return nil, err
-	}
+	mappedGitCommit := impl.mapGitCommit(gitCommit)
 	return mappedGitCommit, nil
 }
 
@@ -386,14 +372,7 @@ func (impl *GrpcHandlerImpl) GetCommitMetadataForPipelineMaterial(ctx context.Co
 	}
 
 	// Mapping GitCommit
-	mappedGitCommit, err := impl.mapGitCommit(res)
-	if err != nil {
-		impl.logger.Errorw("error mapping git commit",
-			"pipelineMaterialId", req.PipelineMaterialId,
-			"err", err)
-
-		return nil, err
-	}
+	mappedGitCommit := impl.mapGitCommit(res)
 	return mappedGitCommit, nil
 }
 
@@ -423,14 +402,7 @@ func (impl *GrpcHandlerImpl) GetCommitInfoForTag(ctx context.Context, req *pb.Co
 	}
 
 	// Mapping GitCommit
-	mappedGitCommit, err := impl.mapGitCommit(res)
-	if err != nil {
-		impl.logger.Errorw("error mapping git commit",
-			"pipelineMaterialId", req.PipelineMaterialId,
-			"err", err)
-
-		return nil, err
-	}
+	mappedGitCommit := impl.mapGitCommit(res)
 	return mappedGitCommit, nil
 }
 
@@ -833,14 +805,13 @@ func (impl *GrpcHandlerImpl) mapGitChanges(gitChanges *git.GitChanges) *pb.GitCh
 	}
 }
 
-func (impl *GrpcHandlerImpl) mapGitCommit(commit *git.GitCommitBase) (*pb.GitCommit, error) {
+func (impl *GrpcHandlerImpl) mapGitCommit(commit *git.GitCommitBase) *pb.GitCommit {
 
 	// mapping FileStats
 	var mappedFileStats []*pb.FileStat
 	if commit.FileStats != nil {
 		mappedFileStats = make([]*pb.FileStat, 0, len(*commit.FileStats))
 		for _, item := range *commit.FileStats {
-
 			mappedFileStats = append(mappedFileStats, &pb.FileStat{
 				Name:     item.Name,
 				Addition: int64(item.Addition),
@@ -869,5 +840,5 @@ func (impl *GrpcHandlerImpl) mapGitCommit(commit *git.GitCommitBase) (*pb.GitCom
 	if !commit.Date.IsZero() {
 		mappedRes.Date = timestamppb.New(commit.Date)
 	}
-	return mappedRes, nil
+	return mappedRes
 }

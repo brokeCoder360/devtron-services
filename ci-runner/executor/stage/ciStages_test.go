@@ -18,9 +18,11 @@ package stage
 
 import (
 	"encoding/json"
+	"github.com/devtron-labs/ci-runner/executor"
 	"github.com/devtron-labs/ci-runner/helper"
 	test_data "github.com/devtron-labs/ci-runner/test-data"
 	"github.com/devtron-labs/ci-runner/util"
+	"github.com/devtron-labs/common-lib/utils/workFlow"
 	"os"
 	"testing"
 )
@@ -36,11 +38,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -53,11 +54,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -70,11 +70,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -87,11 +86,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -104,11 +102,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -121,11 +118,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -138,11 +134,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -155,11 +150,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -172,11 +166,10 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -189,13 +182,22 @@ func TestHandleCIEvent(t *testing.T) {
 		exitCode := 0
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		ciStage := NewCiStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		ciStage.HandleCIEvent(ciCdRequest, &exitCode)
+		getCiStageImpl().HandleCIEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.CiStageFailErrorCode {
+		if exitCode != workFlow.CiStageFailErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
 
+}
+
+func getCiStageImpl() *CiStage {
+	gitCliManager := helper.NewGitCliManager()
+	gitManagerImpl := *helper.NewGitManagerImpl(gitCliManager)
+	commandExecutorImpl := helper.NewCommandExecutorImpl()
+	scriptExecutorImpl := executor.NewScriptExecutorImpl(commandExecutorImpl)
+	stageExecutorImpl := executor.NewStageExecutorImpl(commandExecutorImpl, scriptExecutorImpl)
+	dockerHelperImpl := helper.NewDockerHelperImpl(commandExecutorImpl)
+	return NewCiStage(gitManagerImpl, dockerHelperImpl, stageExecutorImpl)
 }

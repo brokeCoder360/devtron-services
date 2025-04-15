@@ -42,7 +42,7 @@ func GetCache(ciRequest *CommonWorkflowRequest) error {
 	//----------download file
 	blobStorageService := blob_storage.NewBlobStorageServiceImpl(nil)
 	cloudHelperBaseConfig := ciRequest.GetCloudHelperBaseConfig(util.BlobStorageObjectTypeCache)
-	request := createBlobStorageRequest(cloudHelperBaseConfig, ciRequest.CiCacheFileName, ciRequest.CiCacheFileName)
+	request := createBlobStorageRequest(cloudHelperBaseConfig, ciRequest.CiCacheFileName, ciRequest.CiCacheFileName, ciRequest.PartSize, ciRequest.ConcurrencyMultiplier)
 	downloadSuccess, bytesSize, err := blobStorageService.Get(request)
 	if bytesSize >= ciRequest.CacheLimit {
 		log.Println(util.DEVTRON, " cache upper limit exceeded, ignoring old cache")
@@ -105,7 +105,7 @@ func SyncCache(ciRequest *CommonWorkflowRequest) error {
 	log.Println(util.DEVTRON, " -----> pushing new cache")
 	cloudHelperBaseConfig := ciRequest.GetCloudHelperBaseConfig(util.BlobStorageObjectTypeCache)
 	blobStorageService := blob_storage.NewBlobStorageServiceImpl(nil)
-	request := createBlobStorageRequest(cloudHelperBaseConfig, ciRequest.CiCacheFileName, ciRequest.CiCacheFileName)
+	request := createBlobStorageRequest(cloudHelperBaseConfig, ciRequest.CiCacheFileName, ciRequest.CiCacheFileName, ciRequest.PartSize, ciRequest.ConcurrencyMultiplier)
 	err = blobStorageService.PutWithCommand(request)
 	if err != nil {
 		log.Println(util.DEVTRON, " -----> push err", err)

@@ -30,6 +30,8 @@ import (
 	"github.com/aws/aws-sdk-go/service/ecr"
 	"github.com/caarlos0/env"
 	cicxt "github.com/devtron-labs/ci-runner/executor/context"
+	bean2 "github.com/devtron-labs/ci-runner/helper/bean"
+
 	"github.com/devtron-labs/ci-runner/util"
 	"github.com/devtron-labs/common-lib/utils"
 	"github.com/devtron-labs/common-lib/utils/bean"
@@ -62,8 +64,7 @@ const (
 )
 
 type DockerHelper interface {
-	StartDockerDaemon(commonWorkflowRequest *CommonWorkflowRequest)
-	DockerLogin(ciContext cicxt.CiContext, dockerCredentials *DockerCredentials) error
+	StartDockerDaemonAndDockerLogin(commonWorkflowRequest *CommonWorkflowRequest, isSubStep bool) error
 	BuildArtifact(ciRequest *CommonWorkflowRequest) (string, error)
 	StopDocker(ciContext cicxt.CiContext) error
 	PushArtifact(ciContext cicxt.CiContext, dest string) error
@@ -91,7 +92,7 @@ func (impl *DockerHelperImpl) GetDestForNatsEvent(commonWorkflowRequest *CommonW
 	return dest, nil
 }
 
-func (impl *DockerHelperImpl) StartDockerDaemon(commonWorkflowRequest *CommonWorkflowRequest) {
+func (impl *DockerHelperImpl) StartDockerDaemonAndDockerLogin(commonWorkflowRequest *CommonWorkflowRequest, isSubStep bool) error {
 	startDockerDaemon := func() error {
 		connection := commonWorkflowRequest.DockerConnection
 		dockerRegistryUrl := commonWorkflowRequest.IntermediateDockerRegistryUrl
@@ -165,13 +166,34 @@ func (impl *DockerHelperImpl) StartDockerDaemon(commonWorkflowRequest *CommonWor
 			util.PrintFileContent(DOCKERD_OUTPUT_FILE_PATH)
 			return err
 		}
+		if commonWorkflowRequest.CiBuildConfig != nil && !commonWorkflowRequest.CiBuildConfig.CiBuildType.IsSkipBuildType() {
+			ciContext := cicxt.BuildCiContext(context.Background(), commonWorkflowRequest.EnableSecretMasking)
+			err = impl.DockerLogin(ciContext, &DockerCredentials{
+				DockerUsername:     commonWorkflowRequest.DockerUsername,
+				DockerPassword:     commonWorkflowRequest.DockerPassword,
+				AwsRegion:          commonWorkflowRequest.AwsRegion,
+				AccessKey:          commonWorkflowRequest.AccessKey,
+				SecretKey:          commonWorkflowRequest.SecretKey,
+				DockerRegistryURL:  commonWorkflowRequest.IntermediateDockerRegistryUrl,
+				DockerRegistryType: commonWorkflowRequest.DockerRegistryType,
+			})
+			if err != nil {
+				return err
+			}
+		}
+
 		return nil
 	}
 
-	if err := util.ExecuteWithStageInfoLog(util.DOCKER_DAEMON, startDockerDaemon); err != nil {
-		log.Fatal(err)
+	if isSubStep {
+		return startDockerDaemon()
+	} else {
+		if err := util.ExecuteWithStageInfoLog(util.DOCKER_DAEMON, startDockerDaemon); err != nil {
+			return err
+		}
+		return nil
 	}
-	return
+
 }
 
 const CertDir = "/etc/docker/certs.d"
@@ -272,25 +294,13 @@ func (impl *DockerHelperImpl) DockerLogin(ciContext cicxt.CiContext, dockerCrede
 		return nil
 	}
 
-	return util.ExecuteWithStageInfoLog(util.DOCKER_LOGIN_STAGE, performDockerLogin)
+	return performDockerLogin()
 }
 
 func (impl *DockerHelperImpl) BuildArtifact(ciRequest *CommonWorkflowRequest) (string, error) {
 	ciContext := cicxt.BuildCiContext(context.Background(), ciRequest.EnableSecretMasking)
-	err := impl.DockerLogin(ciContext, &DockerCredentials{
-		DockerUsername:     ciRequest.DockerUsername,
-		DockerPassword:     ciRequest.DockerPassword,
-		AwsRegion:          ciRequest.AwsRegion,
-		AccessKey:          ciRequest.AccessKey,
-		SecretKey:          ciRequest.SecretKey,
-		DockerRegistryURL:  ciRequest.IntermediateDockerRegistryUrl,
-		DockerRegistryType: ciRequest.DockerRegistryType,
-	})
-	if err != nil {
-		return "", err
-	}
 	envVars := &EnvironmentVariables{}
-	err = env.Parse(envVars)
+	err := env.Parse(envVars)
 	if err != nil {
 		log.Println("Error while parsing environment variables", err)
 	}
@@ -344,7 +354,7 @@ func (impl *DockerHelperImpl) BuildArtifact(ciRequest *CommonWorkflowRequest) (s
 				}
 				useBuildxK8sDriver, eligibleK8sDriverNodes = dockerBuildConfig.CheckForBuildXK8sDriver()
 				if useBuildxK8sDriver {
-					err = impl.createBuildxBuilderWithK8sDriver(ciContext, ciRequest.DockerConnection, dockerBuildConfig.BuildxDriverImage, eligibleK8sDriverNodes, ciRequest.PipelineId, ciRequest.WorkflowId)
+					err = impl.createBuildxBuilderWithK8sDriver(ciContext, ciRequest.PropagateLabelsInBuildxPod, ciRequest.DockerConnection, dockerBuildConfig.BuildxDriverImage, eligibleK8sDriverNodes, ciRequest.PipelineId, ciRequest.WorkflowId)
 					if err != nil {
 						log.Println(util.DEVTRON, " error in creating buildxDriver , err : ", err.Error())
 						return err
@@ -403,11 +413,12 @@ func (impl *DockerHelperImpl) BuildArtifact(ciRequest *CommonWorkflowRequest) (s
 			return nil
 		}
 
-		if err = util.ExecuteWithStageInfoLog(util.DOCKER_BUILD, buildImageStage); err != nil {
-			return "", nil
+		if err = util.ExecuteWithStageInfoLogWithMetadata(util.DOCKER_BUILD, bean2.DockerBuildStageMetadata{TargetPlatforms: utils.ConvertTargetPlatformStringToObject(ciBuildConfig.DockerBuildConfig.TargetPlatform)}, buildImageStage); err != nil {
+			return "", err
 		}
 
 		if buildxExportCacheFunc != nil {
+			//todo do we need to throw error here? discuss
 			util.ExecuteWithStageInfoLog(util.EXPORT_BUILD_CACHE, buildxExportCacheFunc)
 		}
 
@@ -468,7 +479,7 @@ func (impl *DockerHelperImpl) BuildArtifact(ciRequest *CommonWorkflowRequest) (s
 		}
 
 		if err = util.ExecuteWithStageInfoLog(util.BUILD_PACK_BUILD, buildPacksImageBuildStage); err != nil {
-			return "", nil
+			return "", err
 		}
 
 	}
@@ -557,7 +568,7 @@ func getExportCacheCmds(targetPlatforms, dockerBuild, localCachePath string, use
 	}
 
 	cacheCmd := "%s --platform=%s --cache-to=type=local,dest=%s,mode=" + cacheMode
-	platforms := strings.Split(targetPlatforms, ",")
+	platforms := utils.ConvertTargetPlatformStringToList(targetPlatforms)
 
 	exportCacheCmds := make(map[string]string)
 	for _, platform := range platforms {
@@ -938,14 +949,17 @@ func (impl *DockerHelperImpl) createBuildxBuilderForMultiArchBuild(ciContext cic
 	return nil
 }
 
-func (impl *DockerHelperImpl) createBuildxBuilderWithK8sDriver(ciContext cicxt.CiContext, dockerConnection, buildxDriverImage string, builderNodes []map[string]string, ciPipelineId, ciWorkflowId int) error {
+func (impl *DockerHelperImpl) createBuildxBuilderWithK8sDriver(ciContext cicxt.CiContext, propagateLabelsInBuildxPod bool, dockerConnection, buildxDriverImage string, builderNodes []map[string]string, ciPipelineId, ciWorkflowId int) error {
 	if len(builderNodes) == 0 {
 		return errors.New("atleast one node is expected for builder with kubernetes driver")
 	}
 	deploymentNames := make([]string, 0)
 	for i := 0; i < len(builderNodes); i++ {
 		nodeOpts := builderNodes[i]
-		builderCmd, deploymentName := getBuildxK8sDriverCmd(dockerConnection, buildxDriverImage, nodeOpts, ciPipelineId, ciWorkflowId)
+		builderCmd, deploymentName, err := getBuildxK8sDriverCmd(propagateLabelsInBuildxPod, dockerConnection, buildxDriverImage, nodeOpts, ciPipelineId, ciWorkflowId)
+		if err != nil {
+			return err
+		}
 		deploymentNames = append(deploymentNames, deploymentName)
 		// first node is used as default node, we create builder with --use flag, then we append other nodes
 		if i == 0 {
@@ -957,7 +971,7 @@ func (impl *DockerHelperImpl) createBuildxBuilderWithK8sDriver(ciContext cicxt.C
 
 		fmt.Println(util.DEVTRON, " cmd : ", builderCmd)
 		builderExecCmd := impl.GetCommandToExecute(builderCmd)
-		err := impl.cmdExecutor.RunCommand(ciContext, builderExecCmd)
+		err = impl.cmdExecutor.RunCommand(ciContext, builderExecCmd)
 		if err != nil {
 			fmt.Println(util.DEVTRON, " builderCmd : ", builderCmd, " err : ", err, " error : ")
 			return err
@@ -1017,7 +1031,7 @@ func (impl *DockerHelperImpl) runCmd(cmd string) (error, *bytes.Buffer) {
 	return err, errBuf
 }
 
-func getBuildxK8sDriverCmd(dockerConnection, buildxDriverImage string, driverOpts map[string]string, ciPipelineId, ciWorkflowId int) (string, string) {
+func getBuildxK8sDriverCmd(propagateLabelsInBuildxPod bool, dockerConnection, buildxDriverImage string, driverOpts map[string]string, ciPipelineId, ciWorkflowId int) (string, string, error) {
 	buildxCreate := "docker buildx create --buildkitd-flags '--allow-insecure-entitlement network.host --allow-insecure-entitlement security.insecure' --name=%s --driver=kubernetes --node=%s --bootstrap "
 	nodeName := driverOpts["node"]
 	if nodeName == "" {
@@ -1029,6 +1043,15 @@ func getBuildxK8sDriverCmd(dockerConnection, buildxDriverImage string, driverOpt
 		buildxCreate += " --platform=%s "
 		buildxCreate = fmt.Sprintf(buildxCreate, platforms)
 	}
+	// add driver options for app labels and annotations
+	var err error
+	if propagateLabelsInBuildxPod {
+		driverOpts["driverOptions"], err = getBuildXDriverOptionsWithLabelsAndAnnotations(driverOpts["driverOptions"])
+		if err != nil {
+			return "", "", err
+		}
+	}
+
 	driverOpts["driverOptions"] = getBuildXDriverOptionsWithImage(buildxDriverImage, driverOpts["driverOptions"])
 	if len(driverOpts["driverOptions"]) > 0 {
 		buildxCreate += " '--driver-opt=%s' "
@@ -1039,7 +1062,7 @@ func getBuildxK8sDriverCmd(dockerConnection, buildxDriverImage string, driverOpt
 		buildkitToml = fmt.Sprintf("--config %s", BuildkitdConfigPath)
 	}
 	buildxCreate = fmt.Sprintf("%s %s", buildxCreate, buildkitToml)
-	return buildxCreate, nodeName
+	return buildxCreate, nodeName, nil
 }
 
 func getBuildXDriverOptionsWithImage(buildxDriverImage, driverOptions string) string {
@@ -1049,6 +1072,88 @@ func getBuildXDriverOptionsWithImage(buildxDriverImage, driverOptions string) st
 			driverOptions += fmt.Sprintf(",%s", driverImageOption)
 		} else {
 			driverOptions = driverImageOption
+		}
+	}
+	return driverOptions
+}
+
+func getBuildXDriverOptionsWithLabelsAndAnnotations(driverOptions string) (string, error) {
+	// not passing annotation as of now because --driver-opt=annotations is not supported by buildx if contains quotes
+	labels := make(map[string]string)
+
+	// Read labels from file
+	labelsPath := utils.DEVTRON_SELF_DOWNWARD_API_VOLUME_PATH + "/" + utils.POD_LABELS
+	labelsOut, err := readFileAndLogErrors(labelsPath)
+	if err != nil {
+		return "", err
+	}
+
+	// Parse labels
+	if len(labelsOut) > 0 {
+		labels = parseKeyValuePairs(string(labelsOut))
+	}
+
+	// Combine driver options
+	driverOptions = getBuildXDriverOptions(utils.POD_LABELS, labels, driverOptions)
+
+	//annotations := make(map[string]string)
+	//annotationsPath := utils.DEVTRON_SELF_DOWNWARD_API_VOLUME_PATH + "/" + utils.POD_ANNOTATIONS
+	//annotationsOut, err := readFileAndLogErrors(annotationsPath)
+	//if err != nil {
+	//	return "", err
+	//}
+	//if len(annotationsOut) > 0 {
+	//	annotations = parseKeyValuePairs(string(annotationsOut))
+	//}
+	//driverOptions = getBuildXDriverOptions(utils.POD_ANNOTATIONS, annotations, driverOptions)
+
+	return driverOptions, nil
+}
+
+func readFileAndLogErrors(filePath string) ([]byte, error) {
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			log.Println(util.DEVTRON, "file not found at path:", filePath)
+			return content, nil
+		} else {
+			log.Println(util.DEVTRON, "IO error while reading file at path:", filePath, "err:", err)
+			return nil, err
+		}
+	}
+	return content, nil
+}
+
+func parseKeyValuePairs(input string) map[string]string {
+	keyValuePairs := make(map[string]string)
+	lines := strings.Split(input, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if len(line) > 0 {
+			kv := strings.SplitN(line, "=", 2)
+			if len(kv) == 2 {
+				key := strings.TrimSpace(kv[0])
+				value := strings.Trim(strings.TrimSpace(kv[1]), `"`)
+				keyValuePairs[key] = value
+			}
+		}
+	}
+	return keyValuePairs
+}
+
+func getBuildXDriverOptions(optionType string, options map[string]string, driverOptions string) string {
+	if len(options) > 0 {
+		optionStr := fmt.Sprintf("\"%s=", optionType)
+		for k, v := range options {
+			optionStr += fmt.Sprintf("%s=%s,", k, v)
+		}
+		optionStr = strings.TrimSuffix(optionStr, ",")
+		optionStr += "\""
+
+		if len(driverOptions) > 0 {
+			driverOptions += fmt.Sprintf(",%s", optionStr)
+		} else {
+			driverOptions = optionStr
 		}
 	}
 	return driverOptions

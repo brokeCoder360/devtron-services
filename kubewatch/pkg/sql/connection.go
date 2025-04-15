@@ -20,6 +20,7 @@ import (
 	"github.com/caarlos0/env"
 	"github.com/devtron-labs/common-lib/utils"
 	"github.com/devtron-labs/common-lib/utils/bean"
+	"github.com/devtron-labs/kubewatch/pkg/config"
 	"github.com/go-pg/pg"
 	"go.uber.org/zap"
 	"reflect"
@@ -49,7 +50,12 @@ func GetConfig() (*Config, error) {
 	return cfg, err
 }
 
-func NewDbConnection(cfg *Config, logger *zap.SugaredLogger) (*pg.DB, error) {
+func NewDbConnection(appConfig *config.AppConfig, cfg *Config, logger *zap.SugaredLogger) (*pg.DB, error) {
+	if !appConfig.IsDBAvailable() {
+		logger.Warn("skipping db connection")
+		logger.Debugw("skipping db connection", "appConfig", appConfig)
+		return nil, nil
+	}
 	options := pg.Options{
 		Addr:            cfg.Addr + ":" + cfg.Port,
 		User:            cfg.User,

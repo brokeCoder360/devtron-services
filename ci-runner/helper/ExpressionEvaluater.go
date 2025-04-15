@@ -65,11 +65,18 @@ func StageIsSuccess(conditions []*ConditionObject, variables []*commonBean.Varia
 }
 
 func evaluateExpression(condition *ConditionObject, variables []*commonBean.VariableObject) (status bool, err error) {
+	if condition == nil {
+		return false, fmt.Errorf("invalid condition object")
+	}
 	variableMap := make(map[string]*commonBean.VariableObject)
 	for _, variable := range variables {
 		variableMap[variable.Name] = variable
 	}
-	variableOperand := variableMap[condition.ConditionOnVariable]
+	variableOperand, found := variableMap[condition.ConditionOnVariable]
+	if !found {
+		// error handling for undefined variables
+		return false, fmt.Errorf("variable %q not found", condition.ConditionOnVariable)
+	}
 	if variableOperand.TypedValue == nil {
 		converted, err := variableOperand.Format.Convert(variableOperand.Value)
 		if err != nil {

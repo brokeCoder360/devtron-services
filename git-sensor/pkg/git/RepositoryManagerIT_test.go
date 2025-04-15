@@ -18,6 +18,7 @@ package git
 
 import (
 	"context"
+	"fmt"
 	"github.com/devtron-labs/common-lib/utils"
 	"github.com/devtron-labs/git-sensor/internals"
 	"github.com/devtron-labs/git-sensor/internals/sql"
@@ -29,14 +30,14 @@ import (
 )
 
 var gitRepoUrl = "https://github.com/devtron-labs/getting-started-nodejs"
-var location1 = baseDir + "/git-base/1/github.com/devtron-labs/getting-started-nodejs.git"
-var location2 = baseDir + "/git-base/2/github.com/devtron-labs/getting-started-nodejs.git"
+var location1 = getTestBaseDir() + "/git-base/1/github.com/devtron-labs/getting-started-nodejs.git"
+var location2 = getTestBaseDir() + "/git-base/2/github.com/devtron-labs/getting-started-nodejs.git"
 var commitHash = "dfde5ecae5cd1ae6a7e3471a63a8277177898a7d"
 var tag = "v0.0.2"
 var branchName = "do-not-touch-this-branch"
-var baseDir = "/Users/subhashish/tmp1"
+
 var privateGitRepoUrl = "https://github.com/devtron-labs/getting-started-nodejs.git"
-var privateGitRepoLocation = baseDir + "/git-base/42/github.com/devtron-labs/getting-started-nodejs.git"
+var privateGitRepoLocation = getTestBaseDir() + "/git-base/42/github.com/devtron-labs/getting-started-nodejs.git"
 var username = ""
 var password = ""
 var sshPrivateKey = ``
@@ -64,14 +65,13 @@ func getRepoManagerImpl(t *testing.T) *RepositoryManagerImpl {
 	return repositoryManagerImpl
 }
 
-func setupSuite(t *testing.T) func(t *testing.T) {
-
+func setupSuite() error {
 	err := os.MkdirAll(privateGitRepoLocation, 0700)
-	assert.Nil(t, err)
-	// Return a function to teardown the test
-	return func(t *testing.T) {
-
+	if err != nil {
+		fmt.Println("Error in creating directory", "err", err)
+		return err
 	}
+	return nil
 }
 
 func TestRepositoryManager_Add(t *testing.T) {
@@ -148,11 +148,11 @@ func TestRepositoryManager_Add(t *testing.T) {
 	repositoryManagerImpl := getRepoManagerImpl(t)
 	for _, tt := range tests {
 		if tt.payload.authMode == "SSH" {
-			_, err := repositoryManagerImpl.CreateSshFileIfNotExistsAndConfigureSshCommand(BuildGitContext(context.Background()), tt.payload.location, tt.payload.gitProviderId, tt.payload.sshPrivateKeyContent)
+			_, _, err := repositoryManagerImpl.CreateSshFileIfNotExistsAndConfigureSshCommand(BuildGitContext(context.Background()), tt.payload.location, tt.payload.gitProviderId, tt.payload.sshPrivateKeyContent)
 			assert.Nil(t, err)
 		}
 		t.Run(tt.name, func(t *testing.T) {
-			err := repositoryManagerImpl.Add(tt.payload.gitCtx, tt.payload.gitProviderId, tt.payload.location, tt.payload.url, tt.payload.authMode, tt.payload.sshPrivateKeyContent)
+			_, err := repositoryManagerImpl.Add(tt.payload.gitCtx, tt.payload.gitProviderId, tt.payload.location, tt.payload.url, tt.payload.authMode, tt.payload.sshPrivateKeyContent)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Add() error in %s, error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
@@ -208,7 +208,7 @@ func TestRepositoryManager_Fetch(t *testing.T) {
 		},
 		{
 			name: "Test4_Fetch_InvokingWithWrongLocationOfLocalDir", payload: args{
-				location: baseDir + "/git-base/42/github.com/devtron-labs-private/agetting-started-nodejsgits",
+				location: getTestBaseDir() + "/git-base/42/github.com/devtron-labs-private/agetting-started-nodejsgits",
 				url:      privateGitRepoUrl,
 				gitCtx: GitContext{
 					Context:  context.Background(),
@@ -221,7 +221,7 @@ func TestRepositoryManager_Fetch(t *testing.T) {
 	repositoryManagerImpl := getRepoManagerImpl(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, _, err := repositoryManagerImpl.Fetch(tt.payload.gitCtx, tt.payload.url, tt.payload.location)
+			_, _, _, err := repositoryManagerImpl.Fetch(tt.payload.gitCtx, tt.payload.url, tt.payload.location)
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Fetch() error in %s, error = %v, wantErr %v", tt.name, err, tt.wantErr)
@@ -395,7 +395,7 @@ func TestRepositoryManager_ChangesSince(t *testing.T) {
 	repositoryManagerImpl := getRepoManagerImpl(t)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := repositoryManagerImpl.ChangesSince(BuildGitContext(context.Background()), tt.payload.checkoutPath, tt.payload.branch, tt.payload.from, tt.payload.to, tt.payload.count)
+			got, _, err := repositoryManagerImpl.ChangesSinceByRepository(BuildGitContext(context.Background()), nil, tt.payload.branch, tt.payload.from, tt.payload.to, tt.payload.count, tt.payload.checkoutPath, true)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ChangesSince() error in %s, error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
@@ -599,7 +599,7 @@ func TestRepositoryManager_ChangesSinceByRepository(t *testing.T) {
 		r, err := repositoryManagerImpl.gitManager.OpenRepoPlain(tt.payload.checkoutPath)
 		assert.Nil(t, err)
 		t.Run(tt.name, func(t *testing.T) {
-			got, _, _, err := repositoryManagerImpl.ChangesSinceByRepository(BuildGitContext(context.Background()), r, tt.payload.branch, tt.payload.from, tt.payload.to, tt.payload.count, tt.payload.checkoutPath)
+			got, _, err := repositoryManagerImpl.ChangesSinceByRepository(BuildGitContext(context.Background()), r, tt.payload.branch, tt.payload.from, tt.payload.to, tt.payload.count, tt.payload.checkoutPath, false)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("ChangesSinceByRepository() error in %s, error = %v, wantErr %v", tt.name, err, tt.wantErr)
 				return
@@ -993,9 +993,10 @@ func TestRepositoryManager_Clean(t *testing.T) {
 }
 
 func TestMain(m *testing.M) {
-	var t *testing.T
-	tearDownSuite := setupSuite(t)
+	err := setupSuite()
+	if err != nil {
+		os.Exit(1)
+	}
 	code := m.Run()
-	tearDownSuite(t)
 	os.Exit(code)
 }

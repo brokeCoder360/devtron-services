@@ -49,6 +49,7 @@ type GitMaterial struct {
 	LastFetchErrorCount int       `json:"last_fetch_error_count"  sql:"last_fetch_error_count"` //continues fetch error
 	FetchErrorMessage   string    `json:"fetch_error_message"  sql:"fetch_error_message"`
 	CloningMode         string    `json:"cloning_mode" sql:"-"`
+	CreateBackup        bool      `json:"create_backup" sql:"-"`
 	FilterPattern       []string  `sql:"filter_pattern"`
 	GitProvider         *GitProvider
 	CiPipelineMaterials []*CiPipelineMaterial
@@ -56,11 +57,12 @@ type GitMaterial struct {
 
 type MaterialRepository interface {
 	FindById(id int) (*GitMaterial, error)
+	FindOneWithCiPipelineMaterials(id int) (*GitMaterial, error)
 	Update(material *GitMaterial) error
 	Save(material *GitMaterial) error
 	FindActive() ([]*GitMaterial, error)
 	FindAll() ([]*GitMaterial, error)
-	FindInRage(startFrom int, endAt int) ([]*GitMaterial, error)
+	FindInRange(startFrom int, endAt int) ([]*GitMaterial, error)
 	FindAllActiveByUrls(urls []string) ([]*GitMaterial, error)
 }
 type MaterialRepositoryImpl struct {
@@ -71,17 +73,17 @@ func NewMaterialRepositoryImpl(dbConnection *pg.DB) *MaterialRepositoryImpl {
 	return &MaterialRepositoryImpl{dbConnection: dbConnection}
 }
 
-func (repo MaterialRepositoryImpl) Save(material *GitMaterial) error {
+func (repo *MaterialRepositoryImpl) Save(material *GitMaterial) error {
 	err := repo.dbConnection.Insert(material)
 	return err
 }
 
-func (repo MaterialRepositoryImpl) Update(material *GitMaterial) error {
+func (repo *MaterialRepositoryImpl) Update(material *GitMaterial) error {
 	_, err := repo.dbConnection.Model(material).WherePK().Update()
 	return err
 }
 
-func (repo MaterialRepositoryImpl) FindActive() ([]*GitMaterial, error) {
+func (repo *MaterialRepositoryImpl) FindActive() ([]*GitMaterial, error) {
 	var materials []*GitMaterial
 	err := repo.dbConnection.Model(&materials).
 		Column("git_material.*", "GitProvider").
@@ -95,7 +97,7 @@ func (repo MaterialRepositoryImpl) FindActive() ([]*GitMaterial, error) {
 	return materials, err
 }
 
-func (repo MaterialRepositoryImpl) FindAll() ([]*GitMaterial, error) {
+func (repo *MaterialRepositoryImpl) FindAll() ([]*GitMaterial, error) {
 	var materials []*GitMaterial
 	err := repo.dbConnection.Model(&materials).
 		Column("git_material.*", "GitProvider").
@@ -104,7 +106,7 @@ func (repo MaterialRepositoryImpl) FindAll() ([]*GitMaterial, error) {
 	return materials, err
 }
 
-func (repo MaterialRepositoryImpl) FindInRage(startFrom int, endAt int) ([]*GitMaterial, error) {
+func (repo *MaterialRepositoryImpl) FindInRange(startFrom int, endAt int) ([]*GitMaterial, error) {
 	var materials []*GitMaterial
 	query := repo.dbConnection.Model(&materials).
 		Column("git_material.*", "GitProvider").
@@ -119,7 +121,7 @@ func (repo MaterialRepositoryImpl) FindInRage(startFrom int, endAt int) ([]*GitM
 	return materials, err
 }
 
-func (repo MaterialRepositoryImpl) FindById(id int) (*GitMaterial, error) {
+func (repo *MaterialRepositoryImpl) FindById(id int) (*GitMaterial, error) {
 	var material GitMaterial
 	err := repo.dbConnection.Model(&material).
 		Column("git_material.*", "GitProvider").
@@ -129,7 +131,20 @@ func (repo MaterialRepositoryImpl) FindById(id int) (*GitMaterial, error) {
 	return &material, err
 }
 
-func (repo MaterialRepositoryImpl) FindAllActiveByUrls(urls []string) ([]*GitMaterial, error) {
+func (repo *MaterialRepositoryImpl) FindOneWithCiPipelineMaterials(id int) (*GitMaterial, error) {
+	var material GitMaterial
+	err := repo.dbConnection.Model(&material).
+		Column("git_material.*", "GitProvider", "CiPipelineMaterials").
+		Relation("CiPipelineMaterials", func(q *orm.Query) (query *orm.Query, err error) {
+			return q.Where("(ci_pipeline_material.active=true)"), nil
+		}).
+		Where("git_material.id =? ", id).
+		Where("git_material.deleted =? ", false).
+		Select()
+	return &material, err
+}
+
+func (repo *MaterialRepositoryImpl) FindAllActiveByUrls(urls []string) ([]*GitMaterial, error) {
 	var materials []*GitMaterial
 	err := repo.dbConnection.Model(&materials).
 		Relation("CiPipelineMaterials", func(q *orm.Query) (*orm.Query, error) {

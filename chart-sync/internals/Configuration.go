@@ -7,6 +7,8 @@ type Configuration struct {
 	ChartProviderId                  string `env:"CHART_PROVIDER_ID" envDefault:"*"` // * is used to sync all chart providers; else CHART_PROVIDER_ID should contain chart_repo_id OR docker_artifact_store_id
 	IsOCIRegistry                    bool   `env:"IS_OCI_REGISTRY" envDefault:"true"`
 	ParallelismLimitForTagProcessing int    `env:"PARALLELISM_LIMIT_FOR_TAG_PROCESSING" envDefault:"0"`
+	AppSyncJobShutDownWaitDuration   int    `env:"APP_SYNC_SHUTDOWN_WAIT_DURATION" envDefault:"120"`
+	PrometheusMatrixPort             int    `env:"PROMETHEUS_MATRIX_PORT" envDefault:"8080"`
 }
 
 func ParseConfiguration() (*Configuration, error) {

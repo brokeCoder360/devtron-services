@@ -183,8 +183,8 @@ func (impl *GitCliManagerImpl) processGitLogOutput(out string) ([]GitCommit, err
 
 		cm := GitCommitBase{
 			Commit:  formattedCommit.Commit,
-			Author:  formattedCommit.Commiter.Name + " <" + formattedCommit.Commiter.Email + ">",
-			Date:    formattedCommit.Commiter.Date,
+			Author:  formattedCommit.Author.Name + " <" + formattedCommit.Author.Email + ">",
+			Date:    formattedCommit.Author.Date,
 			Message: message,
 		}
 		gitCommits = append(gitCommits, &GitCommitCli{

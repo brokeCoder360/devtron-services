@@ -2,7 +2,7 @@
 TARGET_BRANCH?=main
 # TARGET_BRANCH=feature-branch make dep-update-oss
 
-all: build
+all: dep-update-oss build
 
 dep-update-oss:
 	cd git-sensor && TARGET_BRANCH=$(TARGET_BRANCH) $(MAKE) dep-update-oss

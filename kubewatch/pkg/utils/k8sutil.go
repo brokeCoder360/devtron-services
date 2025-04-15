@@ -18,11 +18,10 @@ package utils
 
 import (
 	"flag"
-	"os"
-	"os/user"
-	"path/filepath"
-
-	"github.com/sirupsen/logrus"
+	"github.com/devtron-labs/common-lib/utils/k8s"
+	"github.com/devtron-labs/common-lib/utils/k8s/commonBean"
+	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
+	"go.uber.org/zap"
 	apps_v1 "k8s.io/api/apps/v1"
 	batch_v1 "k8s.io/api/batch/v1"
 	api_v1 "k8s.io/api/core/v1"
@@ -31,59 +30,88 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
+	"os/user"
+	"path/filepath"
 )
 
-// GetClient returns a k8s clientset to the request from inside of cluster
-func GetClient() kubernetes.Interface {
-	config, err := rest.InClusterConfig()
-	if err != nil {
-		logrus.Fatalf("Can not get kubernetes config: %v", err)
-	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-	if err != nil {
-		logrus.Fatalf("Can not create kubernetes client: %v", err)
-	}
-
-	return clientset
+type K8sUtilImpl struct {
+	logger              *zap.SugaredLogger
+	httpTransportConfig *k8s.CustomK8sHttpTransportConfig
+	defaultK8sConfig    *rest.Config
 }
 
-func buildOutOfClusterConfig() (*rest.Config, error) {
-	kubeconfigPath := os.Getenv("KUBECONFIG")
-	if kubeconfigPath == "" {
-		kubeconfigPath = os.Getenv("HOME") + "/.kube/config"
-	}
-	return clientcmd.BuildConfigFromFlags("", kubeconfigPath)
+type K8sUtil interface {
+	GetK8sClientForConfig(config *rest.Config) (*kubernetes.Clientset, error)
+	GetK8sConfigForCluster(clusterInfo *repository.Cluster) *rest.Config
 }
 
-// GetClientOutOfCluster returns a k8s clientset to the request from outside of cluster
-func GetClientOutOfCluster() kubernetes.Interface {
-	config, err := buildOutOfClusterConfig()
+func NewK8sUtilImpl(logger *zap.SugaredLogger,
+	httpTransportConfig *k8s.CustomK8sHttpTransportConfig,
+	defaultK8sConfig *rest.Config) *K8sUtilImpl {
+	return &K8sUtilImpl{
+		logger:              logger,
+		httpTransportConfig: httpTransportConfig,
+		defaultK8sConfig:    defaultK8sConfig,
+	}
+}
+
+func (impl *K8sUtilImpl) GetK8sConfigForCluster(clusterInfo *repository.Cluster) *rest.Config {
+	restConfig := &rest.Config{}
+	if clusterInfo.ClusterName == commonBean.DEFAULT_CLUSTER {
+		restConfig = impl.defaultK8sConfig
+	} else {
+		restConfig = &rest.Config{
+			Host:            clusterInfo.ServerUrl,
+			BearerToken:     clusterInfo.Config[commonBean.BearerToken],
+			TLSClientConfig: rest.TLSClientConfig{Insecure: clusterInfo.InsecureSkipTlsVerify},
+		}
+		if !restConfig.TLSClientConfig.Insecure {
+			restConfig.TLSClientConfig.KeyData = []byte(clusterInfo.Config[commonBean.TlsKey])
+			restConfig.TLSClientConfig.CertData = []byte(clusterInfo.Config[commonBean.CertData])
+			restConfig.TLSClientConfig.CAData = []byte(clusterInfo.Config[commonBean.CertificateAuthorityData])
+		}
+	}
+	return restConfig
+}
+
+func (impl *K8sUtilImpl) GetK8sClientForConfig(config *rest.Config) (*kubernetes.Clientset, error) {
+	var err error
+	config, err = impl.httpTransportConfig.OverrideConfigWithCustomTransport(config)
 	if err != nil {
-		logrus.Fatalf("Can not get kubernetes config: %v", err)
+		impl.logger.Errorw("error in overriding config with custom transport", "err", err)
+		return nil, err
 	}
-
-	clientset, err := kubernetes.NewForConfig(config)
-
-	return clientset
+	httpClientFor, err := rest.HTTPClientFor(config)
+	if err != nil {
+		impl.logger.Errorw("error occurred while overriding k8s pubSubClient", "reason", err)
+		return nil, err
+	}
+	clusterClient, err := kubernetes.NewForConfigAndClient(config, httpClientFor)
+	if err != nil {
+		impl.logger.Errorw("error in create k8s config", "err", err)
+		return nil, err
+	}
+	return clusterClient, nil
 }
 
-func GetDefaultK8sConfig(configName string) (*rest.Config, error) {
+func GetDefaultK8sConfig() (*rest.Config, error) {
 	cfg, err := rest.InClusterConfig()
-	if err == nil {
+	if err != nil {
+		// handled for local dev config
+		usr, err := user.Current()
+		if err != nil {
+			return nil, err
+		}
+		kubeConfig := flag.String("kubeconfig", filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
+		flag.Parse()
+		cfg, err = clientcmd.BuildConfigFromFlags("", *kubeConfig)
+		if err != nil {
+			return nil, err
+		}
+		return cfg, nil
+	} else {
 		return cfg, nil
 	}
-	usr, err := user.Current()
-	if err != nil {
-		return nil, err
-	}
-	kubeConfig := flag.String(configName, filepath.Join(usr.HomeDir, ".kube", "config"), "(optional) absolute path to the kubeconfig file")
-	flag.Parse()
-	cfg, err = clientcmd.BuildConfigFromFlags("", *kubeConfig)
-	if err != nil {
-		return nil, err
-	}
-	return cfg, nil
 }
 
 // GetObjectMetaData returns metadata of a given k8s object

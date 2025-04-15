@@ -24,6 +24,7 @@ import (
 	"github.com/devtron-labs/ci-runner/executor"
 	adaptor2 "github.com/devtron-labs/ci-runner/executor/adaptor"
 	cicxt "github.com/devtron-labs/ci-runner/executor/context"
+	helper2 "github.com/devtron-labs/ci-runner/executor/helper"
 	bean2 "github.com/devtron-labs/ci-runner/executor/stage/bean"
 	util2 "github.com/devtron-labs/ci-runner/executor/util"
 	"github.com/devtron-labs/ci-runner/helper"
@@ -33,6 +34,7 @@ import (
 	"github.com/devtron-labs/common-lib/utils/bean"
 	"github.com/devtron-labs/common-lib/utils/workFlow"
 	commonBean "github.com/devtron-labs/common-lib/workflow"
+	"golang.org/x/sync/errgroup"
 	"io/ioutil"
 	"log"
 	"os"
@@ -109,7 +111,7 @@ func (impl *CiStage) HandleCIEvent(ciCdRequest *helper.CiCdTriggerEvent, exitCod
 	var artifactUploadErr error
 	if !artifactUploaded {
 		cloudHelperBaseConfig := ciRequest.GetCloudHelperBaseConfig(util.BlobStorageObjectTypeArtifact)
-		artifactUploaded, artifactUploadErr = helper.ZipAndUpload(cloudHelperBaseConfig, ciCdRequest.CommonWorkflowRequest.CiArtifactFileName)
+		artifactUploaded, artifactUploadErr = helper.ZipAndUpload(cloudHelperBaseConfig, ciCdRequest.CommonWorkflowRequest.CiArtifactFileName, ciRequest.PartSize, ciRequest.ConcurrencyMultiplier)
 	}
 
 	if err != nil {
@@ -143,6 +145,9 @@ func (impl *CiStage) HandleCIEvent(ciCdRequest *helper.CiCdTriggerEvent, exitCod
 		return nil
 	}
 	err = util.ExecuteWithStageInfoLog(util.PUSH_CACHE, uploadCache)
+	if err != nil {
+		log.Println("error in cache push", err)
+	}
 	return
 }
 
@@ -165,50 +170,19 @@ func (impl *CiStage) runCIStages(ciContext cicxt.CiContext, ciCdRequest *helper.
 		_ = os.Mkdir(util.WORKINGDIR, os.ModeDir)
 	}
 
-	// Get ci cache TODO
-	pullCacheStage := func() error {
-		log.Println(util.DEVTRON, " cache-pull")
-		start = time.Now()
-		metrics.CacheDownStartTime = start
-
-		defer func() {
-			log.Println(util.DEVTRON, " /cache-pull")
-			metrics.CacheDownDuration = time.Since(start).Seconds()
-		}()
-
-		err = helper.GetCache(ciCdRequest.CommonWorkflowRequest)
-		if err != nil {
-			return err
-		}
-		return nil
-	}
-
-	if err = util.ExecuteWithStageInfoLog(util.CACHE_PULL, pullCacheStage); err != nil {
-		return artifactUploaded, err
-	}
-
 	// change the current working directory to WORKINGDIR
 	err = os.Chdir(util.WORKINGDIR)
 	if err != nil {
 		return artifactUploaded, err
 	}
-	// git handling
-	log.Println(util.DEVTRON, " git")
 	ciBuildConfi := ciCdRequest.CommonWorkflowRequest.CiBuildConfig
 	buildSkipEnabled := ciBuildConfi != nil && ciBuildConfi.CiBuildType == helper.BUILD_SKIP_BUILD_TYPE
 	skipCheckout := ciBuildConfi != nil && ciBuildConfi.PipelineType == helper.CI_JOB
-	if !skipCheckout {
-		err = impl.gitManager.CloneAndCheckout(ciCdRequest.CommonWorkflowRequest.CiProjectDetails)
-	}
+	err = impl.prepareStep(ciCdRequest, metrics, skipCheckout)
 	if err != nil {
-		log.Println(util.DEVTRON, "clone err", err)
 		return artifactUploaded, err
 	}
-	log.Println(util.DEVTRON, " /git")
 
-	// Start docker daemon TODO
-	log.Println(util.DEVTRON, " docker-build")
-	impl.dockerHelper.StartDockerDaemon(ciCdRequest.CommonWorkflowRequest)
 	extraEnvVars, err := impl.AddExtraEnvVariableFromRuntimeParamsToCiCdEvent(ciCdRequest.CommonWorkflowRequest)
 	if err != nil {
 		return artifactUploaded, err
@@ -257,6 +231,8 @@ func (impl *CiStage) runCIStages(ciContext cicxt.CiContext, ciCdRequest *helper.
 			return artifactUploaded, err
 		}
 	}
+	// setting digest in global env
+	helper2.SetKeyValueInGlobalSystemEnv(scriptEnvs, bean2.DigestGlobalEnvKey, digest)
 	var postCiDuration float64
 	start = time.Now()
 	metrics.PostCiStartTime = start
@@ -274,7 +250,7 @@ func (impl *CiStage) runCIStages(ciContext cicxt.CiContext, ciCdRequest *helper.
 	log.Println(util.DEVTRON, " artifact-upload")
 	cloudHelperBaseConfig := ciCdRequest.CommonWorkflowRequest.GetCloudHelperBaseConfig(util.BlobStorageObjectTypeArtifact)
 	var artifactUploadErr error
-	artifactUploaded, artifactUploadErr = helper.ZipAndUpload(cloudHelperBaseConfig, ciCdRequest.CommonWorkflowRequest.CiArtifactFileName)
+	artifactUploaded, artifactUploadErr = helper.ZipAndUpload(cloudHelperBaseConfig, ciCdRequest.CommonWorkflowRequest.CiArtifactFileName, ciCdRequest.CommonWorkflowRequest.PartSize, ciCdRequest.CommonWorkflowRequest.ConcurrencyMultiplier)
 	if artifactUploadErr != nil {
 		return artifactUploaded, nil
 	}
@@ -299,7 +275,7 @@ func (impl *CiStage) runCIStages(ciContext cicxt.CiContext, ciCdRequest *helper.
 	// scan only if ci scan enabled
 	if helper.IsEventTypeEligibleToScanImage(ciCdRequest.Type) &&
 		ciCdRequest.CommonWorkflowRequest.ScanEnabled {
-		err = runImageScanning(dest, digest, ciCdRequest, metrics, artifactUploaded)
+		err = impl.runImageScanning(adaptor2.GetImageScannerExecutorBean(ciCdRequest, scriptEnvs, refStageMap, metrics, artifactUploaded, dest, digest))
 		if err != nil {
 			return artifactUploaded, err
 		}
@@ -310,7 +286,8 @@ func (impl *CiStage) runCIStages(ciContext cicxt.CiContext, ciCdRequest *helper.
 
 	event := adaptor.NewCiCompleteEvent(ciCdRequest.CommonWorkflowRequest).WithMetrics(*metrics).
 		WithDockerImage(dest).WithDigest(digest).WithIsArtifactUploaded(artifactUploaded).
-		WithImageDetailsFromCR(resultsFromPlugin).WithPluginArtifacts(pluginArtifacts)
+		WithImageDetailsFromCR(resultsFromPlugin).WithPluginArtifacts(pluginArtifacts).
+		WithTargetPlatforms(GetTargetPlatformFromCiBuildConfig(ciCdRequest.CommonWorkflowRequest.CiBuildConfig))
 	err = helper.SendCiCompleteEvent(ciCdRequest.CommonWorkflowRequest, event)
 	if err != nil {
 		log.Println(err)
@@ -438,7 +415,12 @@ func (impl *CiStage) runPostCiSteps(ciCdRequest *helper.CiCdTriggerEvent, script
 	return pluginArtifactsFromFile, resultsFromPlugin, nil
 }
 
-func runImageScanning(dest string, digest string, ciCdRequest *helper.CiCdTriggerEvent, metrics *helper.CIMetrics, artifactUploaded bool) error {
+func (impl *CiStage) runImageScanning(imageScannerExecutor *bean2.ImageScanningExecutorBean) error {
+	ciCdRequest := imageScannerExecutor.CiCdRequest
+	dest, digest := imageScannerExecutor.Dest, imageScannerExecutor.Digest
+	metrics, artifactUploaded := imageScannerExecutor.Metrics, imageScannerExecutor.ArtifactUploaded
+	scriptEnvs, refStageMap := imageScannerExecutor.ScriptEnvs, imageScannerExecutor.RefStageMap
+
 	imageScanningStage := func() error {
 		log.Println("Image Scanning Started for digest", digest)
 		scanEvent := adaptor2.GetImageScanEvent(dest, digest, ciCdRequest.CommonWorkflowRequest)
@@ -453,7 +435,31 @@ func runImageScanning(dest string, digest string, ciCdRequest *helper.CiCdTrigge
 		log.Println("Image scanning completed with scanEvent", scanEvent)
 		return nil
 	}
-
+	imageScanningTaskExecution := func() error {
+		log.Println("Image Scanning Started")
+		for _, allSteps := range ciCdRequest.CommonWorkflowRequest.ImageScanningSteps {
+			scanToolId := allSteps.ScanToolId
+			tasks := allSteps.Steps
+			//setting scan tool id in script env
+			scriptEnvs.SystemEnv[bean2.ScanToolIdGlobalEnvKey] = strconv.Itoa(scanToolId)
+			// run image scanning steps
+			_, _, _, err := impl.stageExecutorManager.RunCiCdSteps(helper.STEP_TYPE_SCANNING, ciCdRequest.CommonWorkflowRequest, tasks, refStageMap, scriptEnvs, nil, true)
+			if err != nil {
+				log.Println("error in running pre Ci Steps", "err", err)
+				return helper.NewCiStageError(err).
+					WithMetrics(metrics).
+					WithFailureMessage(workFlow.ScanFailed.String()).
+					WithArtifactUploaded(artifactUploaded)
+			}
+		}
+		//unset scan tool id in script env
+		delete(scriptEnvs.SystemEnv, bean2.ScanToolIdGlobalEnvKey)
+		log.Println("Image scanning completed")
+		return nil
+	}
+	if ciCdRequest.CommonWorkflowRequest.ExecuteImageScanningVia.IsScanMediumExternal() {
+		return util.ExecuteWithStageInfoLog(util.IMAGE_SCAN, imageScanningTaskExecution)
+	}
 	return util.ExecuteWithStageInfoLog(util.IMAGE_SCAN, imageScanningStage)
 }
 
@@ -516,15 +522,6 @@ func sendCIFailureEvent(ciRequest *helper.CommonWorkflowRequest, err *helper.CiS
 		WithIsArtifactUploaded(err.IsArtifactUploaded()).
 		WithFailureReason(err.GetFailureMessage())
 	e := helper.SendCiCompleteEvent(ciRequest, event)
-	if e != nil {
-		log.Println(e)
-	}
-}
-
-func sendCDFailureEvent(ciRequest *helper.CommonWorkflowRequest, err *helper.CdStageError) {
-	event := adaptor.NewCdCompleteEvent(ciRequest).
-		WithIsArtifactUploaded(err.IsArtifactUploaded())
-	e := helper.SendCDEvent(ciRequest, event)
 	if e != nil {
 		log.Println(e)
 	}
@@ -658,4 +655,132 @@ func (impl *CiStage) extractDigestForCiJob(workflowRequest *helper.CommonWorkflo
 	}
 	log.Println(fmt.Sprintf("time since extract digest from image process:- %s", time.Since(startTime).String()))
 	return imgDigest, nil
+}
+
+func GetTargetPlatformFromCiBuildConfig(ciBuildConfig *helper.CiBuildConfigBean) []string {
+	if ciBuildConfig == nil {
+		return []string{}
+	} else if ciBuildConfig.DockerBuildConfig == nil {
+		return []string{}
+	} else {
+		return utils.ConvertTargetPlatformStringToList(ciBuildConfig.DockerBuildConfig.TargetPlatform)
+	}
+}
+
+func pullCache(metrics *helper.CIMetrics, ciCdRequest *helper.CiCdTriggerEvent) error {
+	// Get ci cache TODO
+	log.Println(util.DEVTRON, " cache-pull")
+	start := time.Now()
+	metrics.CacheDownStartTime = start
+
+	defer func() {
+		log.Println(util.DEVTRON, " /cache-pull")
+		metrics.CacheDownDuration = time.Since(start).Seconds()
+	}()
+
+	err := helper.GetCache(ciCdRequest.CommonWorkflowRequest)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (impl *CiStage) prepareStep(ciCdRequest *helper.CiCdTriggerEvent, metrics *helper.CIMetrics, skipCheckout bool) error {
+	prepareStep := func() error {
+		var useBuildx bool
+		if ciCdRequest.Type == util.JOBEVENT || (ciCdRequest.CommonWorkflowRequest.CiBuildConfig != nil && ciCdRequest.CommonWorkflowRequest.CiBuildConfig.PipelineType == helper.CI_JOB) {
+			// in these cases we don't get docker build config, so setting useBuildx as false explicitly
+			useBuildx = false
+		} else {
+			if ciCdRequest.CommonWorkflowRequest.CiBuildConfig != nil &&
+				ciCdRequest.CommonWorkflowRequest.CiBuildConfig.DockerBuildConfig != nil {
+				useBuildx = ciCdRequest.CommonWorkflowRequest.CiBuildConfig.DockerBuildConfig.CheckForBuildX()
+			}
+		}
+		start := time.Now()
+		eg := new(errgroup.Group)
+
+		if useBuildx {
+			//we can run all stages in parallel
+
+			//first parallel stage - pull cache
+			eg.Go(func() error {
+				err := pullCache(metrics, ciCdRequest)
+				if err != nil {
+					log.Println("cache pull fails, continuing with other stages", "err", err)
+				}
+				//intentionally not returning error here as we want to continue with other stages even if cache pull fails
+				return nil
+			})
+
+			//second parallel stage - git clone
+			eg.Go(func() error {
+				return gitCloneStep(ciCdRequest, impl, skipCheckout)
+			})
+
+			//third parallel stage - docker start
+			eg.Go(func() error {
+				log.Println(util.DEVTRON, " docker-build")
+				return impl.dockerHelper.StartDockerDaemonAndDockerLogin(ciCdRequest.CommonWorkflowRequest, true)
+			})
+
+			if err := eg.Wait(); err != nil {
+				log.Println("Error in executing initial steps", "err", err)
+				return err
+			}
+
+		} else {
+			//first run pull cache git clone in parallel and docker start in sequence
+
+			//first parallel stage - pull cache
+			eg.Go(func() error {
+				err := pullCache(metrics, ciCdRequest)
+				if err != nil {
+					log.Println("cache pull fails, continuing with other stages", "err", err)
+				}
+				//intentionally not returning error here as we want to continue with other stages even if cache pull fails
+				return nil
+			})
+
+			//second parallel stage - git clone
+			eg.Go(func() error {
+				return gitCloneStep(ciCdRequest, impl, skipCheckout)
+			})
+
+			if err := eg.Wait(); err != nil {
+				log.Println("Error in executing initial steps", "err", err)
+				return err
+			}
+
+			//third stage in sequence - docker start
+			log.Println(util.DEVTRON, " docker-build")
+			return impl.dockerHelper.StartDockerDaemonAndDockerLogin(ciCdRequest.CommonWorkflowRequest, true)
+
+		}
+
+		log.Println("total time for cache, git and docker start", time.Since(start).Seconds())
+		return nil
+	}
+
+	err := util.ExecuteWithStageInfoLog(util.PREPARE_STEP, prepareStep)
+	if err != nil {
+		log.Println(util.DEVTRON, "error in PREPARE_STEP ", "err : ", err)
+	}
+	return err
+
+}
+
+func gitCloneStep(ciCdRequest *helper.CiCdTriggerEvent, impl *CiStage, skipCheckout bool) error {
+	// git handling
+	log.Println(util.DEVTRON, " git")
+	if !skipCheckout {
+		err := impl.gitManager.CloneAndCheckout(ciCdRequest.CommonWorkflowRequest.CiProjectDetails, true)
+		if err != nil {
+			log.Println(util.DEVTRON, "clone err", err)
+			return err
+		}
+	}
+
+	log.Println(util.DEVTRON, " /git")
+	return nil
 }

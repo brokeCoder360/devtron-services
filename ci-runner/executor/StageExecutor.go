@@ -29,6 +29,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 )
 
 type StageExecutorImpl struct {
@@ -54,28 +55,33 @@ func (impl *StageExecutorImpl) RunCiCdSteps(stepType helper.StepType, ciCdReques
 	}*/
 
 	stageVariable := make(map[int]map[string]*commonBean.VariableObject)
+	stageInfoLoggingRequired := stepType != helper.STEP_TYPE_REF_PLUGIN
 	pluginArtifactsFromFile := helper.NewPluginArtifact()
+
 	for i, step := range steps {
 
-		stageInfoLoggingRequired := stepType != helper.STEP_TYPE_REF_PLUGIN
 		failedStep := step
-		var (
-			err                error
-			refPluginArtifacts *helper.PluginArtifacts
-		)
+		var refPluginArtifacts *helper.PluginArtifacts
 
-		executeStep := func() error {
-			refPluginArtifacts, failedStep, err = impl.RunCiCdStep(stepType, *ciCdRequest, i, step, refStageMap, scriptEnvVariables, preCiStageVariable, stageVariable, resetEnvVariable)
-			if err != nil {
-				return err
+		executeStep := func() (stepError error) {
+			defer func() {
+				if panicErr := recover(); panicErr != nil {
+					log.Println(util.DEVTRON, "panic occurred in executing step", "step", step.Name, "panic", panicErr, "stack", string(debug.Stack()))
+					stepError = fmt.Errorf("panic occurred in executing step %s", step.Name)
+				}
+			}()
+			refPluginArtifacts, failedStep, stepError = impl.RunCiCdStep(stepType, *ciCdRequest, i, step, refStageMap, scriptEnvVariables, preCiStageVariable, stageVariable, resetEnvVariable)
+			if stepError != nil {
+				return stepError
 			}
 			pluginArtifactsFromFile.MergePluginArtifact(refPluginArtifacts)
 			return nil
 		}
 
+		var err error
 		if stageInfoLoggingRequired {
 			log.Println(util.DEVTRON, "stage logging required")
-			err = util.ExecuteWithStageInfoLog(step.Name, executeStep)
+			err = util.ExecuteWithStageInfoLog(helper.GetPrePostStageDisplayName(step.Name, stepType), executeStep)
 		} else {
 			log.Println(util.DEVTRON, "stage logging not required")
 			err = executeStep()
@@ -144,6 +150,9 @@ func (impl *StageExecutorImpl) RunCiCdStep(stepType helper.StepType, ciCdRequest
 	var vars []*commonBean.VariableObject
 	if stepType == helper.STEP_TYPE_REF_PLUGIN {
 		vars, err = deduceVariables(step.InputVars, scriptEnvVariables, nil, nil, stageVariable)
+	} else if stepType == helper.STEP_TYPE_SCANNING {
+		// only global variables are supported here in image scanning step
+		vars, err = deduceVariables(step.InputVars, scriptEnvVariables, nil, nil, nil)
 	} else {
 		log.Printf("running step : %s\n", step.Name)
 		if stepType == helper.STEP_TYPE_PRE {

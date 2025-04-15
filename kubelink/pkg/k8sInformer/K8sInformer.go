@@ -30,9 +30,8 @@ import (
 	"github.com/devtron-labs/kubelink/converter"
 	client "github.com/devtron-labs/kubelink/grpc"
 	repository "github.com/devtron-labs/kubelink/pkg/cluster"
-	"github.com/devtron-labs/kubelink/pkg/util"
+	"github.com/devtron-labs/kubelink/pkg/service/helmApplicationService/adapter"
 	"go.uber.org/zap"
-	"google.golang.org/protobuf/types/known/timestamppb"
 	"helm.sh/helm/v3/pkg/release"
 	"io/ioutil"
 	coreV1 "k8s.io/api/core/v1"
@@ -431,18 +430,7 @@ func (impl *K8sInformerImpl) startInformerAndPopulateCache(clusterId int) error 
 				if err != nil {
 					impl.logger.Error("error in decoding release")
 				}
-				appDetail := &client.DeployedAppDetail{
-					AppId:        util.GetAppId(int32(clusterModel.Id), releaseDTO),
-					AppName:      releaseDTO.Name,
-					ChartName:    releaseDTO.Chart.Name(),
-					ChartAvatar:  releaseDTO.Chart.Metadata.Icon,
-					LastDeployed: timestamppb.New(releaseDTO.Info.LastDeployed.Time),
-					EnvironmentDetail: &client.EnvironmentDetails{
-						ClusterId:   int32(clusterModel.Id),
-						ClusterName: clusterModel.ClusterName,
-						Namespace:   releaseDTO.Namespace,
-					},
-				}
+				appDetail := adapter.ParseDeployedAppDetail(int32(clusterModel.Id), clusterModel.ClusterName, releaseDTO)
 				impl.mutex.Lock()
 				defer impl.mutex.Unlock()
 				impl.HelmListClusterMap[clusterId][impl.getUniqueReleaseKey(&ReleaseDto{releaseDTO}, clusterModel.Id)] = appDetail
@@ -458,18 +446,7 @@ func (impl *K8sInformerImpl) startInformerAndPopulateCache(clusterId int) error 
 				if err != nil {
 					impl.logger.Error("error in decoding release")
 				}
-				appDetail := &client.DeployedAppDetail{
-					AppId:        util.GetAppId(int32(clusterModel.Id), releaseDTO),
-					AppName:      releaseDTO.Name,
-					ChartName:    releaseDTO.Chart.Name(),
-					ChartAvatar:  releaseDTO.Chart.Metadata.Icon,
-					LastDeployed: timestamppb.New(releaseDTO.Info.LastDeployed.Time),
-					EnvironmentDetail: &client.EnvironmentDetails{
-						ClusterId:   int32(clusterModel.Id),
-						ClusterName: clusterModel.ClusterName,
-						Namespace:   releaseDTO.Namespace,
-					},
-				}
+				appDetail := adapter.ParseDeployedAppDetail(int32(clusterModel.Id), clusterModel.ClusterName, releaseDTO)
 				impl.mutex.Lock()
 				defer impl.mutex.Unlock()
 				// adding cluster id with release name and namespace because there can be case when two cluster or two namespaces have release with same name

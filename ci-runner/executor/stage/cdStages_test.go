@@ -18,9 +18,11 @@ package stage
 
 import (
 	"encoding/json"
+	"github.com/devtron-labs/ci-runner/executor"
 	"github.com/devtron-labs/ci-runner/helper"
 	test_data "github.com/devtron-labs/ci-runner/test-data"
 	"github.com/devtron-labs/ci-runner/util"
+	"github.com/devtron-labs/common-lib/utils/workFlow"
 	"os"
 	"testing"
 )
@@ -35,8 +37,8 @@ func TestHandleCDEvent(t *testing.T) {
 		exitCode := 0
 
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
 		if exitCode != 0 {
@@ -53,12 +55,11 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function with an error
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
-			t.Errorf("Expected exitCode to be %d, but got %d", util.DefaultErrorCode, exitCode)
+		if exitCode != workFlow.DefaultErrorCode {
+			t.Errorf("Expected exitCode to be %d, but got %d", workFlow.DefaultErrorCode, exitCode)
 		}
 	})
 
@@ -71,12 +72,11 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function with an error
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
-			t.Errorf("Expected exitCode to be %d, but got %d", util.DefaultErrorCode, exitCode)
+		if exitCode != workFlow.DefaultErrorCode {
+			t.Errorf("Expected exitCode to be %d, but got %d", workFlow.DefaultErrorCode, exitCode)
 		}
 	})
 
@@ -90,8 +90,7 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
 		if exitCode != 0 {
@@ -109,11 +108,10 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
+		if exitCode != workFlow.DefaultErrorCode {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
@@ -128,12 +126,11 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
-			t.Errorf("Expected exitCode to be %d, but got %d", util.DefaultErrorCode, exitCode)
+		if exitCode != workFlow.DefaultErrorCode {
+			t.Errorf("Expected exitCode to be %d, but got %d", workFlow.DefaultErrorCode, exitCode)
 		}
 	})
 
@@ -148,12 +145,11 @@ func TestHandleCDEvent(t *testing.T) {
 		os.RemoveAll(util.WORKINGDIR)
 		os.RemoveAll("/output")
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
-			t.Errorf("Expected exitCode to be %d, but got %d", util.DefaultErrorCode, exitCode)
+		if exitCode != workFlow.DefaultErrorCode {
+			t.Errorf("Expected exitCode to be %d, but got %d", workFlow.DefaultErrorCode, exitCode)
 		}
 	})
 
@@ -168,12 +164,11 @@ func TestHandleCDEvent(t *testing.T) {
 		os.RemoveAll(util.WORKINGDIR)
 		os.RemoveAll("/output")
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
-		if exitCode != util.DefaultErrorCode {
-			t.Errorf("Expected exitCode to be %d, but got %d", util.DefaultErrorCode, exitCode)
+		if exitCode != workFlow.DefaultErrorCode {
+			t.Errorf("Expected exitCode to be %d, but got %d", workFlow.DefaultErrorCode, exitCode)
 		}
 	})
 
@@ -187,12 +182,21 @@ func TestHandleCDEvent(t *testing.T) {
 
 		os.RemoveAll(util.WORKINGDIR)
 		// Call the function
-		cdStage := NewCdStage(*helper.NewGitManagerImpl(helper.NewGitCliManager()))
-		cdStage.HandleCDEvent(ciCdRequest, &exitCode)
+		getCdStageImpl().HandleCDEvent(ciCdRequest, &exitCode)
 
 		// Assert the expected results
 		if exitCode != 0 {
 			t.Errorf("Expected exitCode to be %d, but got %d", 0, exitCode)
 		}
 	})
+}
+
+func getCdStageImpl() *CdStage {
+	gitCliManager := helper.NewGitCliManager()
+	gitManagerImpl := *helper.NewGitManagerImpl(gitCliManager)
+	commandExecutorImpl := helper.NewCommandExecutorImpl()
+	scriptExecutorImpl := executor.NewScriptExecutorImpl(commandExecutorImpl)
+	stageExecutorImpl := executor.NewStageExecutorImpl(commandExecutorImpl, scriptExecutorImpl)
+	dockerHelperImpl := helper.NewDockerHelperImpl(commandExecutorImpl)
+	return NewCdStage(gitManagerImpl, dockerHelperImpl, stageExecutorImpl)
 }

@@ -28,6 +28,10 @@ import (
 )
 
 const (
+	BACKUP_BASE_DIR            = GIT_BASE_DIR + "backup-base/"
+	BACKUP_GIT_BASE_SUB_DIR    = "git-material/"
+	BACKUP_DB_MODELS_FILE_NAME = "git-material-db.json"
+
 	GIT_BASE_DIR                   = "/git-base/"
 	SSH_PRIVATE_KEY_DIR            = GIT_BASE_DIR + "ssh-keys/"
 	TLS_FILES_DIR                  = GIT_BASE_DIR + "tls-files/"
@@ -230,4 +234,9 @@ func processFileStatOutputNameOnly(commitDiff string) (FileStats, error) {
 }
 func IsRepoShallowCloned(checkoutPath string) bool {
 	return strings.Contains(checkoutPath, "/.git")
+}
+
+func getTestBaseDir() string {
+	dir, _ := os.UserHomeDir()
+	return path.Join(dir, "/tmp")
 }

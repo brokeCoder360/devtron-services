@@ -32,8 +32,10 @@ const (
 	ScannerTypeClairV2       = "CLAIRV2"
 	ScannerTypeTrivy         = "TRIVY"
 	ScanToolClair            = "CLAIR"
+	ScanToolAwsInspector     = "AWS INSPECTOR"
 	ScanToolVersion2         = "V2"
 	ScanToolVersion4         = "V4"
+	ScanToolVersion1         = "V1"
 	SbomOutputFileNameSuffix = "_out.json"
 )
 
@@ -51,17 +53,6 @@ const (
 	ScanExecutionProcessStateRunning                                        //resolved value =  0
 	ScanExecutionProcessStateCompleted                                      //resolved value =  1
 )
-
-type ImageScanOutputObject struct {
-	TargetName     string `json:"targetName"`
-	Class          string `json:"class"`
-	Type           string `json:"type"`
-	Name           string `json:"name"`
-	Package        string `json:"package"`
-	PackageVersion string `json:"packageVersion"`
-	FixedInVersion string `json:"fixedInVersion"`
-	Severity       string `json:"severity"`
-}
 
 // Mapping is the used to store mappings of fields in ImageScanOutputObject and the path at which they are present in stepOutput
 type Mapping map[string]string

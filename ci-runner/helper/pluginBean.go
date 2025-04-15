@@ -39,6 +39,7 @@ const (
 	STEP_TYPE_REF_PLUGIN StepType = "REF_PLUGIN"
 	STEP_TYPE_PRE        StepType = "PRE"
 	STEP_TYPE_POST       StepType = "POST"
+	STEP_TYPE_SCANNING   StepType = "SCANNING"
 )
 
 type StepObject struct {

@@ -1,22 +1,41 @@
 
 
+## ARGOCD_INFORMER Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | ACD_INFORMER | bool |true | Used to determine whether ArgoCD informer is enabled or not |  | false |
+ | ACD_NAMESPACE | string |devtroncd | Namespace where all the ArgoCD application objects are published. For multi-cluster mode, it will be set to v1.NamespaceAll |  | false |
+
+
+## CD_ARGO_WORKFLOW Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | CD_DEFAULT_NAMESPACE | string |devtron-cd | Namespace where all CD workflows objects are scheduled. For multi-cluster mode, it will be set to v1.NamespaceAll |  | false |
+ | CD_INFORMER | bool |true | Used to determine whether CD informer is enabled or not |  | false |
+
+
+## CI_ARGO_WORKFLOW Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | CI_INFORMER | bool |true | Used to determine whether CI informer is enabled or not |  | false |
+ | DEFAULT_NAMESPACE | string |devtron-ci | Namespace where all CI workflows objects are scheduled. For multi-cluster mode, it will be set to v1.NamespaceAll |  | false |
+
+
+## CLUSTER_MODE Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | CLUSTER_ARGO_CD_TYPE | string |IN_CLUSTER | Determines cluster mode for ArgoCD informer; for multiple cluster mode, it will be set to ALL_CLUSTER; for single cluster mode, it will be set to IN_CLUSTER |  | false |
+ | CLUSTER_CD_ARGO_WF_TYPE | string |IN_CLUSTER | Determines cluster mode for CD ArgoWorkflow informer; for multiple cluster mode, it will be set to ALL_CLUSTER; for single cluster mode, it will be set to IN_CLUSTER |  | false |
+ | CLUSTER_CI_ARGO_WF_TYPE | string |IN_CLUSTER | Determines cluster mode for CI ArgoWorkflow informer; for multiple cluster mode, it will be set to ALL_CLUSTER; for single cluster mode, it will be set to IN_CLUSTER |  | false |
+ | CLUSTER_TYPE | string |IN_CLUSTER | Determines cluster mode for System Executor informer; for multiple cluster mode, it will be set to ALL_CLUSTER; for single cluster mode, it will be set to IN_CLUSTER |  | false |
+
+
 ## DEVTRON Related Environment Variables
 | Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
 |-------|----------|-------------------|-------------------|-----------------------|------------------|
- | ACD_INFORMER | bool |true |  |  | false |
- | ACD_NAMESPACE | string |devtroncd |  |  | false |
  | APP | string |kubewatch |  |  | false |
- | CD_DEFAULT_NAMESPACE | string |devtron-cd |  |  | false |
- | CD_EXTERNAL_LISTENER_URL | string |http://devtroncd-orchestrator-service-prod.devtroncd:80 |  |  | false |
- | CD_EXTERNAL_NAMESPACE | string | |  |  | false |
- | CD_EXTERNAL_ORCHESTRATOR_TOKEN | string | |  |  | false |
- | CD_EXTERNAL_REST_LISTENER | bool |false |  |  | false |
- | CD_INFORMER | bool |true |  |  | false |
- | CI_INFORMER | bool |true |  |  | false |
- | CLUSTER_TYPE | string |IN_CLUSTER |  |  | false |
  | CONSUMER_CONFIG_JSON | string | |  |  | false |
  | DEFAULT_LOG_TIME_LIMIT | int64 |1 |  |  | false |
- | DEFAULT_NAMESPACE | string |devtron-ci |  |  | false |
  | ENABLE_STATSVIZ | bool |false |  |  | false |
  | K8s_CLIENT_MAX_IDLE_CONNS_PER_HOST | int |25 |  |  | false |
  | K8s_TCP_IDLE_CONN_TIMEOUT | int |300 |  |  | false |
@@ -41,7 +60,21 @@
  | PG_QUERY_DUR_THRESHOLD | int64 |5000 |  |  | false |
  | PG_USER | string | |  |  | false |
  | RUNTIME_CONFIG_LOCAL_DEV | LocalDevMode |false |  |  | false |
- | SLEEP_TIMEOUT | int |5 |  |  | false |
  | STREAM_CONFIG_JSON | string | |  |  | false |
  | USE_CUSTOM_HTTP_TRANSPORT | bool |false |  |  | false |
+
+
+## EXTERNAL_KUBEWATCH Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | CD_EXTERNAL_LISTENER_URL | string |http://devtroncd-orchestrator-service-prod.devtroncd:80 | URL of the orchestrator |  | false |
+ | CD_EXTERNAL_NAMESPACE | string | | Namespace where the external kubewatch is set up |  | false |
+ | CD_EXTERNAL_ORCHESTRATOR_TOKEN | string | | Token used to authenticate with the orchestrator |  | false |
+ | CD_EXTERNAL_REST_LISTENER | bool |false | Used to determine whether it's an external kubewatch or internal kubewatch |  | false |
+
+
+## GRACEFUL_SHUTDOWN Related Environment Variables
+| Key   | Type     | Default Value     | Description       | Example       | Deprecated       |
+|-------|----------|-------------------|-------------------|-----------------------|------------------|
+ | SLEEP_TIMEOUT | int |5 | Graceful shutdown timeout in seconds |  | false |
 

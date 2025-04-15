@@ -34,9 +34,10 @@ type ResourceScanResult struct {
 type ResourceScanFormat int
 
 const (
-	CycloneDxSbom ResourceScanFormat = 1 //SBOM
-	TrivyJson                        = 2
-	Json                             = 3
+	CycloneDxSbom    ResourceScanFormat = 1 //SBOM
+	TrivyJson                           = 2
+	Json                                = 3
+	SbomResultSource                    = 4
 )
 
 type ResourceScanType int

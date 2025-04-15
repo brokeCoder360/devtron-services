@@ -115,6 +115,7 @@ func GetGlobalEnvVariables(ciCdRequest *helper.CiCdTriggerEvent) (*ScriptEnvVari
 		RegistryCredentials, _ := json.Marshal(ciCdRequest.CommonWorkflowRequest.RegistryCredentialMap)
 		envs["REGISTRY_DESTINATION_IMAGE_MAP"] = string(RegistryDestinationImage)
 		envs["REGISTRY_CREDENTIALS"] = string(RegistryCredentials)
+		envs["AWS_INSPECTOR_CONFIG"] = ciCdRequest.CommonWorkflowRequest.AwsInspectorConfig
 	} else {
 		envs["DOCKER_IMAGE"] = ciCdRequest.CommonWorkflowRequest.CiArtifactDTO.Image
 		envs["DOCKER_IMAGE_TAG"] = ciCdRequest.CommonWorkflowRequest.DockerImageTag

@@ -23,7 +23,7 @@ func NewCiCompleteEvent(ciRequest *helper.CommonWorkflowRequest) *helper.CiCompl
 	return event
 }
 
-func NewCdCompleteEvent(cdRequest *helper.CommonWorkflowRequest) *helper.CdStageCompleteEvent {
+func NewCdCompleteEvent(cdRequest *helper.CommonWorkflowRequest, isFailed bool) *helper.CdStageCompleteEvent {
 	event := &helper.CdStageCompleteEvent{
 		CiProjectDetails:              cdRequest.CiProjectDetails,
 		CdPipelineId:                  cdRequest.CdPipelineId,
@@ -33,6 +33,7 @@ func NewCdCompleteEvent(cdRequest *helper.CommonWorkflowRequest) *helper.CdStage
 		TriggeredBy:                   cdRequest.TriggeredBy,
 		PluginRegistryArtifactDetails: cdRequest.RegistryDestinationImageMap,
 		PluginArtifactStage:           cdRequest.PluginArtifactStage,
+		IsFailed:                      isFailed,
 	}
 	return event
 }

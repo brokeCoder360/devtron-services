@@ -17,22 +17,29 @@
 package middleware
 
 import (
+	"github.com/devtron-labs/kubewatch/pkg/informer/bean"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"strconv"
 )
 
 // metrics name constants
 const (
-	KUBEWATCH_UNREACHABLE_CLIENT_COUNT     = "Kubewatch_unreachable_client_count"
-	KUBEWATCH_UNREACHABLE_CLIENT_COUNT_API = "Kubewatch_unreachable_client_count_API"
+	KUBEWATCH_UNREACHABLE_CLIENT_COUNT    = "Kubewatch_unreachable_client_count"
+	KUBEWATCH_UNREGISTERED_INFORMER_COUNT = "Kubewatch_unregistered_informer_count"
 )
 
 // metrics labels constants
 const (
-	CLUSTER_NAME = "clusterName"
-	CLUSTER_ID   = "clusterId"
-	HOST         = "host"
-	PATH         = "path"
+	CLUSTER_NAME  = "clusterName"
+	CLUSTER_ID    = "clusterId"
+	INFORMER_NAME = "informerName"
+
+	CI_STAGE_ARGO_WORKFLOW = "CIStageArgoWorkflow"
+	CD_STAGE_ARGO_WORLFLOW = "CDStageArgoWorkflow"
+	ARGO_CD                = "ArgoCD"
+	DEFAULT_CLUSTER_SECRET = "DefaultClusterSecret"
+	SYSTEM_EXECUTOR        = "SystemExecutor"
 )
 
 var UnreachableCluster = promauto.NewCounterVec(
@@ -40,8 +47,21 @@ var UnreachableCluster = promauto.NewCounterVec(
 		Name: KUBEWATCH_UNREACHABLE_CLIENT_COUNT,
 		Help: "How many HTTP requests processed, partitioned by status code, method and HTTP path.",
 	},
-	[]string{CLUSTER_NAME, CLUSTER_ID})
+	[]string{CLUSTER_NAME, CLUSTER_ID},
+)
 
-func IncUnUnreachableCluster(clusterName, clusterId string) {
-	UnreachableCluster.WithLabelValues(clusterName, clusterId).Inc()
+var UnregisteredInformers = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name: KUBEWATCH_UNREGISTERED_INFORMER_COUNT,
+		Help: "How many informers are unregistered, with cluster name and cluster id.",
+	},
+	[]string{CLUSTER_NAME, CLUSTER_ID, INFORMER_NAME},
+)
+
+func IncUnreachableCluster(clusterLabels *bean.ClusterLabels) {
+	UnreachableCluster.WithLabelValues(clusterLabels.ClusterName, strconv.Itoa(clusterLabels.ClusterId)).Inc()
+}
+
+func IncUnregisteredInformers(clusterLabels *bean.ClusterLabels, informerName string) {
+	UnregisteredInformers.WithLabelValues(clusterLabels.ClusterName, strconv.Itoa(clusterLabels.ClusterId), informerName).Inc()
 }

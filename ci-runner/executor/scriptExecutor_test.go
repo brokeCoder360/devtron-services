@@ -17,7 +17,9 @@
 package executor
 
 import (
+	"context"
 	"fmt"
+	cicxt "github.com/devtron-labs/ci-runner/executor/context"
 	"github.com/devtron-labs/ci-runner/helper"
 	"io/ioutil"
 	"os"
@@ -76,9 +78,12 @@ func TestRunScripts(t *testing.T) {
 			},
 		},
 	}
+	commandExecutorImpl := helper.NewCommandExecutorImpl()
+	scriptExecutorImpl := NewScriptExecutorImpl(commandExecutorImpl)
+	ciContext := cicxt.BuildCiContext(context.Background(), true)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RunScripts(tt.args.workDirectory, tt.args.scriptFileName, tt.args.script, tt.args.envVars, tt.args.outputVars)
+			got, err := scriptExecutorImpl.RunScripts(ciContext, tt.args.workDirectory, tt.args.scriptFileName, tt.args.script, tt.args.envVars, tt.args.outputVars)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RunScripts() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -217,9 +222,13 @@ func TestRunScriptsInDocker(t *testing.T) {
 			want:    map[string]string{"HOME": "/root", "PWD": "/", "NAME": "from-script", "KIND": "TEST"},
 			wantErr: false},
 	}
+	commandExecutorImpl := helper.NewCommandExecutorImpl()
+	scriptExecutorImpl := NewScriptExecutorImpl(commandExecutorImpl)
+	stageExecutorImpl := NewStageExecutorImpl(commandExecutorImpl, scriptExecutorImpl)
+	ciContext := cicxt.BuildCiContext(context.Background(), true)
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := RunScriptsInDocker(tt.args.executionConf)
+			got, err := RunScriptsInDocker(ciContext, stageExecutorImpl, tt.args.executionConf)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("RunScriptsInDocker() error = %v, wantErr %v", err, tt.wantErr)
 				return

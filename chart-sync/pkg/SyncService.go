@@ -71,6 +71,7 @@ func (impl *SyncServiceImpl) Sync() (interface{}, error) {
 		ociRegistries []*sql.DockerArtifactStore
 		ociRegistry   *sql.DockerArtifactStore
 	)
+
 	if impl.configuration.ChartProviderId == "*" {
 		ociRegistries, err = impl.dockerArtifactStoreRepository.FindAllChartProviders()
 		if err != nil {
@@ -109,16 +110,25 @@ func (impl *SyncServiceImpl) Sync() (interface{}, error) {
 			continue
 		}
 		impl.logger.Infow("syncing repo", "OCI Registry Id", registryObj.Id)
+		start := time.Now()
 		err := impl.syncOCIRepo(registryObj)
 		if err != nil {
 			impl.logger.Errorw("repo sync error", "OCIRegistry", registryObj)
+			internals.RepoSyncDuration.WithLabelValues("oci", registryObj.RegistryURL, err.Error()).Observe(time.Since(start).Seconds())
+		} else {
+			internals.RepoSyncDuration.WithLabelValues("oci", registryObj.RegistryURL, "").Observe(time.Since(start).Seconds())
 		}
 	}
 	for _, repository := range repos {
 		impl.logger.Infow("syncing repo", "name", repository.Name)
+		// Track standard repo sync time
+		start := time.Now()
 		err := impl.syncRepo(repository)
 		if err != nil {
 			impl.logger.Errorw("repo sync error", "repo", repository)
+			internals.RepoSyncDuration.WithLabelValues("standard", repository.Name, err.Error()).Observe(time.Since(start).Seconds())
+		} else {
+			internals.RepoSyncDuration.WithLabelValues("standard", repository.Name, "").Observe(time.Since(start).Seconds())
 		}
 	}
 	return nil, nil
@@ -251,8 +261,10 @@ func (impl *SyncServiceImpl) syncOCIRepo(ociRepo *sql.DockerArtifactStore) error
 		}
 		if err != nil {
 			impl.logger.Errorw("error in updating chart versions", "err", err, "appId", id)
+			internals.ChartVersionsProcessed.WithLabelValues("oci", chartName, "failed")
 			continue
 		}
+		internals.ChartVersionsProcessed.WithLabelValues("oci", chartName, "success")
 	}
 	return nil
 }
@@ -288,6 +300,7 @@ func (impl *SyncServiceImpl) syncRepo(repo *sql.ChartRepo) error {
 				impl.logger.Errorw("error in saving app", "app", app, "err", err)
 				continue
 			}
+
 			applicationId[name] = app.Id
 			id = app.Id
 		}
@@ -296,8 +309,10 @@ func (impl *SyncServiceImpl) syncRepo(repo *sql.ChartRepo) error {
 		err := impl.updateChartVersions(id, &chartVersions, repo.Url, repo.Username, repo.Password, repo.AllowInsecureConnection)
 		if err != nil {
 			impl.logger.Errorw("error in updating chart versions", "err", err, "appId", id)
+			internals.ChartVersionsProcessed.WithLabelValues("standard", repo.Name, "failed")
 			continue
 		}
+		internals.ChartVersionsProcessed.WithLabelValues("standard", repo.Name, "success")
 	}
 	return nil
 }

@@ -57,4 +57,6 @@ func (r Router) Init() {
 	})
 
 	r.Router.Path("/scanner/image").HandlerFunc(r.restHandler.ScanForVulnerability).Methods("POST")
+	r.Router.Path("/scanner/save-result").HandlerFunc(r.restHandler.RegisterAndSaveScannedResult).Methods("POST")
+
 }

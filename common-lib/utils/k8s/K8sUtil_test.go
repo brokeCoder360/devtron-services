@@ -27,7 +27,7 @@ var clusterConfig *ClusterConfig
 func init() {
 	config := &RuntimeConfig{LocalDevMode: true}
 	logger, _ := utils.NewSugardLogger()
-	k8sUtilClient = NewK8sUtil(logger, config)
+	k8sUtilClient, _ = NewK8sUtil(logger, config)
 	clusterConfig = &ClusterConfig{
 		Host:        "",
 		BearerToken: "",

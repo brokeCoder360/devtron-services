@@ -42,16 +42,17 @@ const (
 )
 
 const (
+	PREPARE_STEP                         = "Git cloning & preparing docker"
 	CACHE_PULL                           = "Pulling Cache"
 	GIT_CLONE_CHECKOUT                   = "Git Clone & Checkout"
-	DOCKER_DAEMON                        = "Starting Docker Daemon"
+	DOCKER_DAEMON                        = "Starting Docker Daemon and then Docker Login"
 	DOCKER_LOGIN_STAGE                   = "Docker Login"
 	DOCKER_PUSH                          = "Docker Push"
 	DOCKER_BUILD                         = "Docker Build"
 	DOCKER_STOP                          = "Docker Stop"
 	BUILD_ARTIFACT                       = "Build Artifact"
 	UPLOAD_ARTIFACT                      = "Uploading Artifact"
-	PUSH_CACHE                           = "Pushing Cache"
+	PUSH_CACHE                           = "Pushing Cache (Cleanup)"
 	DOCKER_PUSH_AND_EXTRACT_IMAGE_DIGEST = "Docker Push And Extract Image Digest"
 	IMAGE_SCAN                           = "Image Scanning"
 	SETUP_BUILDX_BUILDER                 = "Setting Up Buildx Builder"
@@ -180,10 +181,11 @@ const (
 
 type StageLogData struct {
 	//eg : 'STAGE_INFO|{"stage":"Resource availability","startTime":"2021-01-01T00:00:00Z"}'
-	Stage     string     `json:"stage,omitempty"`
-	StartTime *time.Time `json:"startTime,omitempty"`
-	EndTime   *time.Time `json:"endTime,omitempty"`
-	Status    Status     `json:"status,omitempty"`
+	Stage     string      `json:"stage,omitempty"`
+	StartTime *time.Time  `json:"startTime,omitempty"`
+	EndTime   *time.Time  `json:"endTime,omitempty"`
+	Status    Status      `json:"status,omitempty"`
+	Metadata  interface{} `json:"metadata,omitempty"`
 }
 
 func (stageLogData *StageLogData) withStatus(status Status) *StageLogData {
@@ -203,6 +205,11 @@ func (stageLogData *StageLogData) withCurrentEndTime() *StageLogData {
 	return stageLogData
 }
 
+func (stageLogData *StageLogData) withMetadata(metadata interface{}) *StageLogData {
+	stageLogData.Metadata = metadata
+	return stageLogData
+}
+
 func (stageLogData *StageLogData) log() {
 	infoLog := fmt.Sprintf("STAGE_INFO|%s\n", stageLogData.string())
 	log.SetFlags(0)
@@ -219,7 +226,14 @@ func (stageLogData *StageLogData) string() string {
 // it will log info for pre stage execution and post the stage execution
 // return the error returned by the stageExecutor func
 func ExecuteWithStageInfoLog(stageName string, stageExecutor func() error) (err error) {
-	startDockerStageInfo := newStageInfo(stageName).withCurrentStartTime()
+	return ExecuteWithStageInfoLogWithMetadata(stageName, nil, stageExecutor)
+}
+
+// ExecuteWithStageInfoLogWithMetadata logs the stage info.
+// it will log info for pre stage execution and post the stage execution
+// return the error returned by the stageExecutor func
+func ExecuteWithStageInfoLogWithMetadata(stageName string, metadata interface{}, stageExecutor func() error) (err error) {
+	startDockerStageInfo := newStageInfo(stageName).withCurrentStartTime().withMetadata(metadata)
 	startDockerStageInfo.log()
 	defer func() {
 		status := success

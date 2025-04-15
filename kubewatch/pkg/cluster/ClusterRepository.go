@@ -17,8 +17,10 @@
 package repository
 
 import (
+	"github.com/devtron-labs/common-lib/utils/k8s/commonBean"
 	"github.com/devtron-labs/kubewatch/pkg/sql"
 	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 	"go.uber.org/zap"
 )
 
@@ -39,10 +41,28 @@ type Cluster struct {
 	K8sVersion             string            `sql:"k8s_version"`
 	ErrorInConnecting      string            `sql:"error_in_connecting"`
 	InsecureSkipTlsVerify  bool              `sql:"insecure_skip_tls_verify"`
+	IsVirtualCluster       bool              `sql:"is_virtual_cluster"`
 	sql.AuditLog
 }
 
+func GetDefaultCluster() *Cluster {
+	return &Cluster{
+		Id:          1,
+		ClusterName: commonBean.DEFAULT_CLUSTER,
+	}
+}
+
+func (c *Cluster) IsDefault() bool {
+	if c == nil {
+		return false
+	}
+	return c.ClusterName == commonBean.DEFAULT_CLUSTER
+}
+
 func NewClusterRepositoryImpl(dbConnection *pg.DB, logger *zap.SugaredLogger) *ClusterRepositoryImpl {
+	if dbConnection == nil {
+		return nil
+	}
 	return &ClusterRepositoryImpl{
 		dbConnection: dbConnection,
 		logger:       logger,
@@ -57,6 +77,7 @@ type ClusterRepositoryImpl struct {
 type ClusterRepository interface {
 	FindAllActive() ([]*Cluster, error)
 	FindById(id int) (*Cluster, error)
+	FindByName(name string) (*Cluster, error)
 	FindByIdWithActiveFalse(id int) (*Cluster, error)
 }
 
@@ -64,7 +85,11 @@ func (impl ClusterRepositoryImpl) FindAllActive() ([]*Cluster, error) {
 	var clusters []*Cluster
 	err := impl.dbConnection.
 		Model(&clusters).
-		Where("active=?", true).
+		Where("active = ?", true).
+		WhereGroup(func(query *orm.Query) (*orm.Query, error) {
+			return query.WhereOr("is_virtual_cluster = ?", false).
+				WhereOr("is_virtual_cluster IS NULL"), nil
+		}).
 		Select()
 	return clusters, err
 }
@@ -73,8 +98,26 @@ func (impl ClusterRepositoryImpl) FindById(id int) (*Cluster, error) {
 	var cluster Cluster
 	err := impl.dbConnection.
 		Model(&cluster).
-		Where("id= ? ", id).
-		Where("active =?", true).
+		Where("id = ?", id).
+		Where("active = ?", true).
+		WhereGroup(func(query *orm.Query) (*orm.Query, error) {
+			return query.WhereOr("is_virtual_cluster = ?", false).
+				WhereOr("is_virtual_cluster IS NULL"), nil
+		}).
+		Select()
+	return &cluster, err
+}
+
+func (impl ClusterRepositoryImpl) FindByName(name string) (*Cluster, error) {
+	var cluster Cluster
+	err := impl.dbConnection.
+		Model(&cluster).
+		Where("cluster_name = ?", name).
+		Where("active = ?", true).
+		WhereGroup(func(query *orm.Query) (*orm.Query, error) {
+			return query.WhereOr("is_virtual_cluster = ?", false).
+				WhereOr("is_virtual_cluster IS NULL"), nil
+		}).
 		Select()
 	return &cluster, err
 }
@@ -83,8 +126,12 @@ func (impl ClusterRepositoryImpl) FindByIdWithActiveFalse(id int) (*Cluster, err
 	var cluster Cluster
 	err := impl.dbConnection.
 		Model(&cluster).
-		Where("id= ? ", id).
-		Where("active =?", false).
+		Where("id = ?", id).
+		Where("active = ?", false).
+		WhereGroup(func(query *orm.Query) (*orm.Query, error) {
+			return query.WhereOr("is_virtual_cluster = ?", false).
+				WhereOr("is_virtual_cluster IS NULL"), nil
+		}).
 		Select()
 	return &cluster, err
 }

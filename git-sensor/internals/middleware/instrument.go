@@ -110,6 +110,14 @@ var GitMaterialPollCounter = promauto.NewCounterVec(
 	},
 	[]string{})
 
+var GitFetchTimeoutCounter = promauto.NewCounterVec(
+	prometheus.CounterOpts{
+		Name:        "git_fetch_timeout",
+		Help:        "no of timeouts while running git fetch command",
+		ConstLabels: constLabels,
+	},
+	[]string{})
+
 var PanicCounter = promauto.NewCounterVec(
 	prometheus.CounterOpts{
 		Name:        "panic",

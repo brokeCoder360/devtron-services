@@ -108,7 +108,7 @@ func SortProjectDetailsByCheckoutPath(ciProjectDetails []CiProjectDetails) {
 	})
 }
 
-func (impl *GitManager) CloneAndCheckout(ciProjectDetails []CiProjectDetails) error {
+func (impl *GitManager) CloneAndCheckout(ciProjectDetails []CiProjectDetails, isSubStep bool) error {
 	cloneAndCheckoutGitMaterials := func() error {
 		// changing the order of execution(sorting by checkout path) to handle cases where git does not clone for
 		// cases like a/b and a/b/c if a/b/c is cloned before and git clone cmd will fail as it requires an empty directory
@@ -219,9 +219,13 @@ func (impl *GitManager) CloneAndCheckout(ciProjectDetails []CiProjectDetails) er
 		return nil
 	}
 
-	err := util.ExecuteWithStageInfoLog(util.GIT_CLONE_CHECKOUT, cloneAndCheckoutGitMaterials)
-	if err != nil {
-		log.Println(util.DEVTRON, "error in cloning and checking out the git materials ", "err : ", err)
+	if isSubStep {
+		return cloneAndCheckoutGitMaterials()
+	} else {
+		err := util.ExecuteWithStageInfoLog(util.GIT_CLONE_CHECKOUT, cloneAndCheckoutGitMaterials)
+		if err != nil {
+			log.Println(util.DEVTRON, "error in cloning and checking out the git materials ", "err : ", err)
+		}
+		return err
 	}
-	return err
 }

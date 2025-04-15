@@ -19,6 +19,7 @@ package util
 import (
 	"github.com/caarlos0/env"
 	blob_storage "github.com/devtron-labs/common-lib/blob-storage"
+	"runtime"
 )
 
 const (
@@ -117,12 +118,24 @@ func (c *CloudHelperBaseConfig) SetGcpBlobStorageConfig(blobStorageConfig *BlobS
 	}
 }
 
-func GetBlobStorageBaseS3Config(b *blob_storage.BlobStorageS3Config, blobStorageObjectType string) *blob_storage.AwsS3BaseConfig {
+func GetBlobStorageBaseS3Config(b *blob_storage.BlobStorageS3Config, blobStorageObjectType string, partSize int64, concurrencyMultiplier int) *blob_storage.AwsS3BaseConfig {
+	cores := runtime.NumCPU()
+	if concurrencyMultiplier == 0 {
+		concurrencyMultiplier = 2
+	}
+
+	//below handling is also inside sdk, but we are doing it here to avoid sdk dependency
+	if partSize == 0 {
+		partSize = 5 //Default 5 MB
+	}
+
 	awsS3BaseConfig := &blob_storage.AwsS3BaseConfig{
 		AccessKey:   b.AccessKey,
 		Passkey:     b.Passkey,
 		EndpointUrl: b.EndpointUrl,
 		IsInSecure:  b.IsInSecure,
+		PartSize:    partSize * 1024 * 1024,
+		Concurrency: cores * concurrencyMultiplier,
 	}
 	switch blobStorageObjectType {
 	case BlobStorageObjectTypeCache:

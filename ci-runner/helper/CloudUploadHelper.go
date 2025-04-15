@@ -24,20 +24,20 @@ import (
 
 // UploadFileToCloud
 // Uploads the source file to the destination key of configured blob storage /**
-func UploadFileToCloud(cloudHelperBaseConfig *util.CloudHelperBaseConfig, sourceFilePath string, destinationKey string) error {
+func UploadFileToCloud(cloudHelperBaseConfig *util.CloudHelperBaseConfig, sourceFilePath string, destinationKey string, partSize int64, concurrencyMultiplier int) error {
 
 	blobStorageService := blob_storage.NewBlobStorageServiceImpl(nil)
-	request := createBlobStorageRequest(cloudHelperBaseConfig, sourceFilePath, destinationKey)
+	request := createBlobStorageRequest(cloudHelperBaseConfig, sourceFilePath, destinationKey, partSize, concurrencyMultiplier)
 	return blobStorageService.PutWithCommand(request)
 }
 
-func createBlobStorageRequest(cloudHelperBaseConfig *util.CloudHelperBaseConfig, sourceKey string, destinationKey string) *blob_storage.BlobStorageRequest {
+func createBlobStorageRequest(cloudHelperBaseConfig *util.CloudHelperBaseConfig, sourceKey string, destinationKey string, partSize int64, concurrencyMultiplier int) *blob_storage.BlobStorageRequest {
 	if cloudHelperBaseConfig.UseExternalClusterBlob {
 		UpdateCloudHelperBaseConfigFromEnv(cloudHelperBaseConfig)
 	}
 	var awsS3BaseConfig *blob_storage.AwsS3BaseConfig
 	if cloudHelperBaseConfig.BlobStorageS3Config != nil {
-		awsS3BaseConfig = util.GetBlobStorageBaseS3Config(cloudHelperBaseConfig.BlobStorageS3Config, cloudHelperBaseConfig.BlobStorageObjectType)
+		awsS3BaseConfig = util.GetBlobStorageBaseS3Config(cloudHelperBaseConfig.BlobStorageS3Config, cloudHelperBaseConfig.BlobStorageObjectType, partSize, concurrencyMultiplier)
 	}
 	var azureBlobBaseConfig *blob_storage.AzureBlobBaseConfig
 	if cloudHelperBaseConfig.AzureBlobConfig != nil {

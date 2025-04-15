@@ -21,19 +21,51 @@ package main
 
 import (
 	"github.com/devtron-labs/common-lib/monitoring"
+	k8s "github.com/devtron-labs/common-lib/utils/k8s"
 	api "github.com/devtron-labs/kubewatch/api/router"
+	"github.com/devtron-labs/kubewatch/pkg/asyncProvider"
+	repository "github.com/devtron-labs/kubewatch/pkg/cluster"
+	"github.com/devtron-labs/kubewatch/pkg/config"
+	"github.com/devtron-labs/kubewatch/pkg/informer"
+	"github.com/devtron-labs/kubewatch/pkg/informer/cluster"
 	"github.com/devtron-labs/kubewatch/pkg/logger"
+	"github.com/devtron-labs/kubewatch/pkg/pubsub"
+	"github.com/devtron-labs/kubewatch/pkg/resource"
+	"github.com/devtron-labs/kubewatch/pkg/sql"
+	"github.com/devtron-labs/kubewatch/pkg/utils"
 	"github.com/google/wire"
 )
 
 func InitializeApp() (*App, error) {
 	wire.Build(
 		logger.NewSugaredLogger,
+		config.GetAppConfig,
+		sql.GetConfig,
+		utils.GetDefaultK8sConfig,
+
+		sql.NewDbConnection,
+
+		asyncProvider.WireSet,
+
+		repository.WireSet,
+
+		k8s.NewCustomK8sHttpTransportConfig,
+		utils.NewK8sUtilImpl,
+		wire.Bind(new(utils.K8sUtil), new(*utils.K8sUtilImpl)),
+
+		pubsub.NewPubSubClientServiceImpl,
+
+		resource.NewInformerClientImpl,
+		wire.Bind(new(resource.InformerClient), new(*resource.InformerClientImpl)),
+
+		cluster.WireSet,
+		
+		informer.NewRunnerImpl,
+		wire.Bind(new(informer.Runner), new(*informer.RunnerImpl)),
+
 		NewApp,
 		api.NewRouter,
 		monitoring.NewMonitoringRouter,
-		GetExternalConfig,
-		GetClusterConfig,
 	)
 	return &App{}, nil
 }

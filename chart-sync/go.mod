@@ -5,7 +5,7 @@ go 1.22.4
 toolchain go1.22.6
 
 replace (
-	github.com/devtron-labs/common-lib => github.com/devtron-labs/devtron-services/common-lib v0.0.0-20250122120743-f9dc0038c36a
+	github.com/devtron-labs/common-lib => github.com/devtron-labs/devtron-services/common-lib v0.0.0-20250411055655-be36c40e11ea
 	helm.sh/helm/v3 v3.14.3 => github.com/devtron-labs/helm/v3 v3.14.1-0.20240401080259-90238cf69e42
 )
 
@@ -16,6 +16,7 @@ require (
 	github.com/go-pg/pg v6.15.1+incompatible
 	github.com/google/wire v0.6.0
 	github.com/pkg/errors v0.9.1
+	github.com/prometheus/client_golang v1.17.0
 	go.uber.org/zap v1.21.0
 	golang.org/x/exp v0.0.0-20240222234643-814bf88cf225
 	helm.sh/helm/v3 v3.14.3
@@ -78,7 +79,6 @@ require (
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.1.0 // indirect
 	github.com/peterbourgon/diskv v2.0.1+incompatible // indirect
-	github.com/prometheus/client_golang v1.17.0 // indirect
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect

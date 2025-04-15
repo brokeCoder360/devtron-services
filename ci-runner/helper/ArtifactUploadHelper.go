@@ -31,7 +31,7 @@ import (
 //const BLOB_STORAGE_S3 = "S3"
 //const BLOB_STORAGE_GCP = "GCP"
 
-func UploadArtifact(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactFiles map[string]string, artifactFileLocation string) (artifactUploaded bool, err error) {
+func UploadArtifact(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactFiles map[string]string, artifactFileLocation string, partSize int64, concurrencyMultiplier int) (artifactUploaded bool, err error) {
 	if len(artifactFiles) == 0 {
 		log.Println(util.DEVTRON, "no artifact to upload")
 		return artifactUploaded, nil
@@ -53,10 +53,10 @@ func UploadArtifact(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactF
 			return artifactUploaded, err
 		}
 	}
-	return ZipAndUpload(cloudHelperBaseConfig, artifactFileLocation)
+	return ZipAndUpload(cloudHelperBaseConfig, artifactFileLocation, partSize, concurrencyMultiplier)
 }
 
-func ZipAndUpload(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactFileName string) (artifactUploaded bool, artifactUploadErr error) {
+func ZipAndUpload(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactFileName string, partSize int64, concurrencyMultiplier int) (artifactUploaded bool, artifactUploadErr error) {
 	uploadArtifact := func() error {
 		if !cloudHelperBaseConfig.StorageModuleConfigured {
 			log.Println(util.DEVTRON, "not going to upload artifact as storage module not configured...")
@@ -79,7 +79,7 @@ func ZipAndUpload(cloudHelperBaseConfig *util.CloudHelperBaseConfig, artifactFil
 			return err
 		}
 		log.Println(util.DEVTRON, " artifact upload to ", zipFile, artifactFileName)
-		err = UploadFileToCloud(cloudHelperBaseConfig, zipFile, artifactFileName)
+		err = UploadFileToCloud(cloudHelperBaseConfig, zipFile, artifactFileName, partSize, concurrencyMultiplier)
 		if err != nil {
 			return err
 		}

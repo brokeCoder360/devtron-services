@@ -1,1 +1,324 @@
-[{"Category":"DEVTRON","Fields":[{"Env":"ANALYTICS_DEBUG","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"APP","EnvType":"string","EnvValue":"git-sensor","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"CLI_CMD_TIMEOUT_GLOBAL_SECONDS","EnvType":"int","EnvValue":"900","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"CLI_CMD_TIMEOUT_JSON","EnvType":"string","EnvValue":"","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"COMMIT_STATS_TIMEOUT_IN_SEC","EnvType":"int","EnvValue":"2","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"CONSUMER_CONFIG_JSON","EnvType":"string","EnvValue":"","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"DEFAULT_LOG_TIME_LIMIT","EnvType":"int64","EnvValue":"1","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"ENABLE_FILE_STATS","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"ENABLE_STATSVIZ","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"GIT_HISTORY_COUNT","EnvType":"int","EnvValue":"15","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"GOGIT_TIMEOUT_SECONDS","EnvType":"int","EnvValue":"10","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"LOG_LEVEL","EnvType":"int","EnvValue":"0","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"MIN_LIMIT_FOR_PVC","EnvType":"int","EnvValue":"1","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_MSG_ACK_WAIT_IN_SECS","EnvType":"int","EnvValue":"120","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_MSG_BUFFER_SIZE","EnvType":"int","EnvValue":"-1","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_MSG_MAX_AGE","EnvType":"int","EnvValue":"86400","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_MSG_PROCESSING_BATCH_SIZE","EnvType":"int","EnvValue":"1","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_MSG_REPLICAS","EnvType":"int","EnvValue":"0","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"NATS_SERVER_HOST","EnvType":"string","EnvValue":"nats://devtron-nats.devtroncd:4222","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_ADDR","EnvType":"string","EnvValue":"127.0.0.1","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_DATABASE","EnvType":"string","EnvValue":"git_sensor","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_EXPORT_PROM_METRICS","EnvType":"bool","EnvValue":"true","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_LOG_ALL_FAILURE_QUERIES","EnvType":"bool","EnvValue":"true","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_LOG_ALL_QUERY","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_LOG_SLOW_QUERY","EnvType":"bool","EnvValue":"true","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_PASSWORD","EnvType":"string","EnvValue":"","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_PORT","EnvType":"string","EnvValue":"5432","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_QUERY_DUR_THRESHOLD","EnvType":"int64","EnvValue":"5000","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"PG_USER","EnvType":"string","EnvValue":"","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"POLL_DURATION","EnvType":"int","EnvValue":"2","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"POLL_WORKER","EnvType":"int","EnvValue":"5","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"SERVER_GRPC_PORT","EnvType":"int","EnvValue":"8081","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"SERVER_REST_PORT","EnvType":"int","EnvValue":"8080","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"STREAM_CONFIG_JSON","EnvType":"string","EnvValue":"","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"USE_GIT_CLI","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"},{"Env":"USE_GIT_CLI_ANALYTICS","EnvType":"bool","EnvValue":"false","EnvDescription":"","Example":"","Deprecated":"false"}]}]
+[
+    {
+        "Category": "DEVTRON",
+        "Fields": [
+            {
+                "Env": "ANALYTICS_DEBUG",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "APP",
+                "EnvType": "string",
+                "EnvValue": "git-sensor",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "CLI_CMD_TIMEOUT_GLOBAL_SECONDS",
+                "EnvType": "int",
+                "EnvValue": "900",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "CLI_CMD_TIMEOUT_JSON",
+                "EnvType": "string",
+                "EnvValue": "",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "COMMIT_STATS_TIMEOUT_IN_SEC",
+                "EnvType": "int",
+                "EnvValue": "2",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "CONSUMER_CONFIG_JSON",
+                "EnvType": "string",
+                "EnvValue": "",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "DEFAULT_LOG_TIME_LIMIT",
+                "EnvType": "int64",
+                "EnvValue": "1",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "ENABLE_FILE_STATS",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "ENABLE_STATSVIZ",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "GIT_HISTORY_COUNT",
+                "EnvType": "int",
+                "EnvValue": "15",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "GOGIT_TIMEOUT_SECONDS",
+                "EnvType": "int",
+                "EnvValue": "10",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "LOG_LEVEL",
+                "EnvType": "int",
+                "EnvValue": "0",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "MIN_LIMIT_FOR_PVC",
+                "EnvType": "int",
+                "EnvValue": "1",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_MSG_ACK_WAIT_IN_SECS",
+                "EnvType": "int",
+                "EnvValue": "120",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_MSG_BUFFER_SIZE",
+                "EnvType": "int",
+                "EnvValue": "-1",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_MSG_MAX_AGE",
+                "EnvType": "int",
+                "EnvValue": "86400",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_MSG_PROCESSING_BATCH_SIZE",
+                "EnvType": "int",
+                "EnvValue": "1",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_MSG_REPLICAS",
+                "EnvType": "int",
+                "EnvValue": "0",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "NATS_SERVER_HOST",
+                "EnvType": "string",
+                "EnvValue": "nats://devtron-nats.devtroncd:4222",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_ADDR",
+                "EnvType": "string",
+                "EnvValue": "127.0.0.1",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_DATABASE",
+                "EnvType": "string",
+                "EnvValue": "git_sensor",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_EXPORT_PROM_METRICS",
+                "EnvType": "bool",
+                "EnvValue": "true",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_LOG_ALL_FAILURE_QUERIES",
+                "EnvType": "bool",
+                "EnvValue": "true",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_LOG_ALL_QUERY",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_LOG_SLOW_QUERY",
+                "EnvType": "bool",
+                "EnvValue": "true",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_PASSWORD",
+                "EnvType": "string",
+                "EnvValue": "",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_PORT",
+                "EnvType": "string",
+                "EnvValue": "5432",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_QUERY_DUR_THRESHOLD",
+                "EnvType": "int64",
+                "EnvValue": "5000",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "PG_USER",
+                "EnvType": "string",
+                "EnvValue": "",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "POLL_DURATION",
+                "EnvType": "int",
+                "EnvValue": "2",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "POLL_WORKER",
+                "EnvType": "int",
+                "EnvValue": "5",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "SERVER_GRPC_PORT",
+                "EnvType": "int",
+                "EnvValue": "8081",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "SERVER_REST_PORT",
+                "EnvType": "int",
+                "EnvValue": "8080",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "STREAM_CONFIG_JSON",
+                "EnvType": "string",
+                "EnvValue": "",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "USE_GIT_CLI",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "USE_GIT_CLI_ANALYTICS",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "Demo",
+                "EnvType": "bool",
+                "EnvValue": "true",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            }
+        ]
+    },
+    {
+        "Category": "DEVTRON2",
+        "Fields": [
+            {
+                "Env": "ANALYTICS_DEBUG",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            },
+            {
+                "Env": "demo3",
+                "EnvType": "bool",
+                "EnvValue": "false",
+                "EnvDescription": "",
+                "Example": "",
+                "Deprecated": "false"
+            }
+        ]        
+    }
+]
